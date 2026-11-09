@@ -1,0 +1,94 @@
+DiscoveryOS-nsh/src/ui/Forum.tsx
+  s_b74678dd72dad8::t_4e74ca270dc2c8 337,344,346
+  s_b74678dd72dad8::t_b562f9778cc282 13
+  s_29a0fb24dd1dd0::t_baa81f39b10cf0 8,16-17,19,27-37,40,48,52,65-68,132-134,140-142,158,163-164,200-215,217-220,223-224,231,239,268-270,293-294,317-336,338-343,345,347-348,351-364,366-381,388,395-402,407,422,424-426
+  s_b74678dd72dad8::t_d7878a28d4bb1b 304
+  s_b74678dd72dad8::t_399a24f5296ab3 419
+  s_b74678dd72dad8::t_4331ff8a526a5c 165-186
+  s_29a0fb24dd1dd0::t_8d9277bb442d74 18
+  s_b74678dd72dad8::t_9b579a018f8d12 197-198
+  s_b74678dd72dad8::t_f5a2800f31c9c6 221-222
+  s_b74678dd72dad8::t_3795c61ba8911f 415
+  s_b74678dd72dad8::t_a1f818809781d5 307-308
+  s_b74678dd72dad8::t_a8fd99c8b4cc15 148-149
+  s_29a0fb24dd1dd0::t_ad3303f24a2f75 69-89
+  s_b74678dd72dad8::t_b768f61439cac7 127-131
+  s_b74678dd72dad8::t_e9a2ae79511749 192
+  s_29a0fb24dd1dd0::t_09cd136902838b 216
+  s_29a0fb24dd1dd0::t_c3ce8b73c6162a 435-443,445-446
+  s_b74678dd72dad8::t_b62ea647f9fda7 449-452
+  s_29a0fb24dd1dd0::t_200991a0a9fe71 4
+  s_29a0fb24dd1dd0::t_8de8f1a0d9e299 152-156
+  s_29a0fb24dd1dd0::t_45d91e1522d434 53-58
+  s_b74678dd72dad8::t_11b6d24916e2cd 136-137,144
+DiscoveryOS-nsh/src/ui/Skeleton.tsx
+  s_29a0fb24dd1dd0::t_8478d3b803caa3 1-30
+DiscoveryOS-nsh/src/ui/Failure.tsx
+  s_29a0fb24dd1dd0::t_9553eb1833ae4b 1-26
+DiscoveryOS-nsh/src/ui/toast.tsx
+  s_29a0fb24dd1dd0::t_01bc61bad1dc94 1-66
+DiscoveryOS-nsh/src/ui/LoadingBar.tsx
+  s_b74678dd72dad8::t_ac414912e45fbf 1-8,16-18
+  s_b74678dd72dad8::t_39bdf05be71e0b 11-13,15
+DiscoveryOS-nsh/src/ui/sidebar.svg
+  s_b74678dd72dad8::t_94096bea7edc5c 1-5
+DiscoveryOS-nsh/src/ui/icons.tsx
+  s_b74678dd72dad8::t_fcc8586d9b1711 54,72-73,79
+  s_b74678dd72dad8::t_05c1eaa06c8064 6-11
+  s_b74678dd72dad8::t_e92093b93190a2 3
+  s_b74678dd72dad8::t_1464279af4e214 50,61,64-70,93-96
+  s_b74678dd72dad8::t_5b98cbedab5ce1 51-53,55-59,62-63,74-78,80-92
+  s_b74678dd72dad8::t_d1fe4555c1d52b 71
+DiscoveryOS-nsh/src/ui/channelRail.test.ts
+  s_29a0fb24dd1dd0::t_9bbaa212acecc1 1-16
+DiscoveryOS-nsh/src/ui/channelRail.ts
+  s_29a0fb24dd1dd0::t_83af63e15c3727 1-32
+DiscoveryOS-nsh/App.test.tsx
+  s_29a0fb24dd1dd0::t_c4cb860e883281 6-7,13-24
+  s_29a0fb24dd1dd0::t_d2e4f8377fb26f 25
+DiscoveryOS-nsh/src/ui/Thread.tsx
+  s_29a0fb24dd1dd0::t_1a37779ab2f4ba 33,35-36
+  s_29a0fb24dd1dd0::t_5934c6c1772de7 115-116
+  s_29a0fb24dd1dd0::t_e9d7706e8c2266 157,164-165
+  s_29a0fb24dd1dd0::t_bd9b7e8b45cbe8 60-63
+  s_29a0fb24dd1dd0::t_1e0e140e3efd1d 13
+  s_29a0fb24dd1dd0::t_48288c8db79b92 12
+  s_29a0fb24dd1dd0::t_750c61950431dd 154,161
+  s_29a0fb24dd1dd0::t_ffd50b32b7ff6d 186
+  s_29a0fb24dd1dd0::t_a6dfc7d78fc2ff 93-94
+  s_29a0fb24dd1dd0::t_27fd3230156efc 87
+  s_29a0fb24dd1dd0::t_1e2beeaa9da8c8 48
+  s_29a0fb24dd1dd0::t_29ecc44452e51b 136-137
+DiscoveryOS-nsh/src/ui/ThreadRow.tsx
+  s_29a0fb24dd1dd0::t_7b676a576c2624 1-54
+DiscoveryOS-nsh/App.tsx
+  s_29a0fb24dd1dd0::t_32c40b2c0b8046 148
+  s_29a0fb24dd1dd0::t_08a5a91d541815 127-128,130-131
+  s_29a0fb24dd1dd0::t_a2e6af17d85399 8
+  s_29a0fb24dd1dd0::t_0730e3e7452af2 221
+  s_29a0fb24dd1dd0::t_b6fe2f286a0671 224-225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "26e1c0bf1b8572190f56ef5d1b3d986687d6c957",
+  "prompts": {},
+  "sessions": {
+    "s_29a0fb24dd1dd0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3250fd7b-a90e-4389-8e71-3c11408c99ac",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_b74678dd72dad8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bae335a7-528b-4da9-8ac4-623d7af5961c",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
