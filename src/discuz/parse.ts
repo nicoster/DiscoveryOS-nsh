@@ -1,0 +1,254 @@
+// Port of the regex helpers in `DiscuzAPI.swift`: `captureGroups` (its quirk:
+// one match gives that match's groups, several give the whole matches),
+// `htmlDecoded`, and the channel and thread rows of the forum pages.
+
+/** `String.captureGroups(regex:skipFirst:)`. */
+export function captureGroups(text: string, pattern: string, skipFirst = false): string[] {
+  const re = new RegExp(pattern, "gs");
+  const matches = [...text.matchAll(re)];
+  if (matches.length > 1) return matches.map((m) => m[0]);
+  const match = matches[0];
+  if (!match) return [];
+  return Array.from(match).slice(skipFirst ? 1 : 0).map((g) => g ?? "");
+}
+
+const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+
+/** Decodes the HTML entities a Discuz title can carry. */
+export function htmlDecode(text: string): string {
+  return text.replace(/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);/g, (whole, body: string) => {
+    if (body[0] === "#") {
+      const code = body[1] === "x" || body[1] === "X" ? parseInt(body.slice(2), 16) : parseInt(body.slice(1), 10);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : whole;
+    }
+    return ENTITIES[body] ?? whole;
+  });
+}
+
+/** `removingPercentEncoding`: the text, or itself when it is not valid escapes. */
+export function removePercentEncoding(text: string): string {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
+}
+
+export type Channel = { id: string; title: string; description: string; newPosts: number };
+export type Post = {
+  id: string;
+  title: string;
+  uid?: string;
+  author?: string;
+  at?: string;
+  replies: number;
+  views?: number;
+  lastReplyBy?: string;
+  lastReplyAt?: string;
+  /** The forum (channel) the thread is in, when the page names it. */
+  fid?: string;
+};
+
+/** The channels on the index page (`DiscuzAPI.loadChannels`). */
+export function parseChannels(html: string): Channel[] {
+  const channels: Channel[] = [];
+  for (const row of captureGroups(html, "<tr>.*?</tr>")) {
+    const col = captureGroups(row, 'forumdisplay\\.php\\?fid=(\\d+).*?>([^<]+)</a>.*?<p>((?:[^<]+)?)<', true);
+    if (col.length === 0) continue;
+    const field = captureGroups(row, "今日: <strong>(\\d+)", true);
+    const newPosts = field.length === 1 ? Number(field[0]) || 0 : 0;
+    channels.push({ id: col[0], title: col[1], description: col[2], newPosts });
+  }
+  return channels;
+}
+
+/** The threads on a forum page (`DiscuzAPI.loadPosts`). */
+export function parsePosts(html: string): Post[] {
+  const posts: Post[] = [];
+  for (const row of captureGroups(html, "<tr>.*?</tr>")) {
+    const col = captureGroups(
+      row,
+      '<span[^>]*><a href="viewthread\\.php\\?tid=(\\d+)[^>]*>([^<]+).*href="space\\.php\\?uid=(\\d+)">([^<]+)</a>.*<em>(\\d{4}-\\d{1,2}-\\d{1,2})</em>.*<td class="nums"><strong>(\\d+)</strong>/<em>(\\d+)</em></td>.*space\\.php\\?username=[^"]+">([^<]+)<.*lastpost">([^<]+)<',
+      true,
+    );
+    if (col.length === 0) continue;
+    posts.push({
+      id: col[0],
+      title: htmlDecode(col[1]),
+      uid: col[2],
+      author: removePercentEncoding(col[3]),
+      at: col[4],
+      replies: Number(col[5]) || 0,
+      views: Number(col[6]) || 0,
+      lastReplyBy: removePercentEncoding(col[7]),
+      lastReplyAt: col[8],
+    });
+  }
+  return posts;
+}
+
+export type Author = { id: string; name: string; avatar: string };
+export type Reply = {
+  id: string;
+  author: Author;
+  at: string;
+  /** The floor number (`#` in the page). */
+  seq: number;
+  /** The post's HTML body, as the page has it (Discuz's own markup). */
+  body: string;
+};
+
+/** The replies on a thread page (`DiscuzAPI.loadReplies`). Bodies stay HTML:
+ * the `TextView` renders HTML, so no Markdown conversion is needed. */
+export function parseReplies(html: string): Reply[] {
+  const replies: Reply[] = [];
+  for (const row of html.split('<td class="postcontent postbottom">')) {
+    const col = captureGroups(
+      row,
+      '<table id="pid(\\d+)".*?space\\.php\\?uid=(\\d+).*?>([^<]+)</a>.*href="space\\.php\\?uid=.*?<img src="([^"]+)".*<em>(\\d+)</em><sup>#</sup>.*<em id=.*?>发表于 ([^<]+)</em>.*(<div class="postmessage.*)$',
+      true,
+    );
+    if (col.length === 0) continue;
+    replies.push({
+      id: col[0],
+      author: { id: col[1], name: col[2], avatar: col[3] },
+      at: col[5],
+      seq: Number(col[4]) || -1,
+      body: col[6],
+    });
+  }
+  return replies;
+}
+
+/** Makes relative `src` / `href` paths absolute against `base`, as the Swift
+ * app's Markdown did with `baseURL`. Absolute, protocol-relative, `#` and
+ * `javascript:` links are left alone. */
+export function absolutize(html: string, base: string): string {
+  return html.replace(/(src|href)="(?![a-zA-Z][a-zA-Z0-9+.-]*:|\/\/|#)([^"]*)"/g, (_, attr: string, path: string) => {
+    return `${attr}="${new URL(path, base).href}"`;
+  });
+}
+
+/** The favorites page's threads (`DiscuzAPI.loadBookmarks`). */
+export function parseBookmarks(html: string): Post[] {
+  const posts: Post[] = [];
+  for (const row of captureGroups(html, "<tr>.*?</tr>")) {
+    const col = captureGroups(
+      row,
+      '<a href="viewthread\\.php\\?tid=(\\d+).*?>([^<]+)</a>.*?<a href="forumdisplay\\.php\\?fid=(\\d+).*?>([^<]+)</a>.*?<td class="nums">(\\d+)</td>.*?space\\.php\\?username[^>]+>([^<]+)</a>.*?lastpost">([^<]+)</a>',
+      true,
+    );
+    if (col.length === 0) continue;
+    posts.push({
+      id: col[0],
+      title: htmlDecode(col[1]),
+      fid: col[2],
+      replies: Number(col[4]) || 0,
+      lastReplyBy: removePercentEncoding(col[5]),
+      lastReplyAt: col[6],
+    });
+  }
+  return posts;
+}
+
+/** The user page's UID and avatar (`DiscuzAPI.loadUser`). */
+export function parseUser(html: string, name: string): Author | undefined {
+  const col = captureGroups(html, '\\(UID: (\\d+)\\).*<div class="avatar"><img src="([^"]+)', true);
+  if (col.length === 0) return undefined;
+  return { id: col[0], name, avatar: col[1] };
+}
+
+/** A page's HTML as plain text, for quoting (the Swift app quotes Markdown). */
+export function htmlToText(html: string): string {
+  return htmlDecode(html.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "")).trim();
+}
+
+/** `DiscuzAPI.quoted`: a Discuz `[quote]` of a reply, linking back to it. */
+export function buildQuote(
+  host: string,
+  thread: { id: string; title: string },
+  reply: Reply,
+): string {
+  return (
+    `[quote] ${htmlToText(reply.body)}\n` +
+    `[size=2][color=#999999]${reply.author.name} 发表于 ${reply.at}[/color] ` +
+    `[url=${host}redirect.php?goto=findpost&pid=${reply.id}&ptid=${thread.id}][img]${host}images/common/back.gif[/img][/url][/size][/quote]\n`
+  );
+}
+
+/**
+ * Appends a fetched page to the list. Paging ends when a page is empty, or when
+ * its first item is already loaded: past its end, Discuz serves the last page
+ * again. A short page is not an end, since the page size is the forum's own
+ * setting and not always the same as the one asked for.
+ */
+export function mergePage<T extends { id: string }>(
+  loaded: T[],
+  incoming: T[],
+): { items: T[]; more: boolean } {
+  if (incoming.length === 0) return { items: loaded, more: false };
+  if (loaded.some((x) => x.id === incoming[0].id)) return { items: loaded, more: false };
+  return { items: [...loaded, ...incoming], more: true };
+}
+
+/** An absolute URL for a path on the forum (`DiscuzAPI`'s relative paths). */
+export function absoluteUrl(path: string, base: string): string {
+  return new URL(path, base).href;
+}
+
+/** Drops the empty lines a post starts with (`<br>`, or empty paragraphs and
+ * blocks), which would otherwise show as a blank band under the author line. */
+export function trimLeadingBlanks(html: string): string {
+  let out = html;
+  let previous: string;
+  do {
+    previous = out;
+    out = out.replace(/^\s*(?:<br\s*\/?>|<(p|div|span)\b[^>]*>(?:\s|&nbsp;)*<\/\1>)/i, "");
+  } while (out !== previous);
+  return out;
+}
+
+/** The pictures of a Discuz post. Discuz wraps a picture as
+ * `<a href="javascript:;"><img onclick="zoom(this, 'full.jpg')" src="thumb">`;
+ * the full picture is in `zoom`, else `file=`, else `src=` (a placeholder such
+ * as a loading image is skipped for `file=`). A picture is its own block that
+ * fills the column; smilies keep their size. */
+export function fixImages(html: string): string {
+  // Discuz's hidden attachment spans and their menus are not content: the
+  // TextView does not hide `display: none`, so they would show (as the small
+  // attachment icons).
+  // Discuz lays the body out in a table: a picture's percentage width would
+  // then resolve against the cell's content, so the table becomes plain blocks.
+  const flat = html.replace(/<(table|tr|td|th)\b[^>]*>/gi, "<div>").replace(/<\/(table|tr|td|th)>/gi, "</div>");
+  const visible = flat
+    .replace(/<span\b[^>]*display:\s*none[^>]*>[\s\S]*?<\/span>/gi, "")
+    .replace(/<div class="t_attach"[\s\S]*?<\/div>\s*<\/div>/gi, "");
+  // A script-only link around a picture is just the picture.
+  const unwrapped = visible.replace(/<a\b[^>]*href="javascript:[^"]*"[^>]*>\s*(<img\b[^>]*>)\s*<\/a>/gi, "$1");
+  return unwrapped.replace(/<img\b([^>]*)>/gi, (whole, attrs: string) => {
+    const src = /\bsrc="([^"]*)"/i.exec(attrs)?.[1];
+    const file = /\bfile="([^"]+)"/i.exec(attrs)?.[1];
+    const zoom = /zoom\(this,\s*'([^']+)'/i.exec(attrs)?.[1];
+    const placeholder = !src || /loading|none\.gif|common\/|smilies\//i.test(src);
+    const chosen = zoom ?? (placeholder && file ? file : src);
+    if (!chosen) return whole;
+    // Discuz's own icons (`images/default/...`) are not content.
+    if (/images\/(default|attachicons|common)\//i.test(chosen)) return "";
+    // Discuz's `x.jpg.thumb.jpg` is the small copy of `x.jpg`: show the original.
+    const picture = chosen.replace(/\.thumb\.[a-z0-9]+$/i, "");
+    const smiley = /smilies\//i.test(picture);
+    let kept = attrs
+      .replace(/\bsrc="[^"]*"/i, "")
+      .replace(/\bfile="[^"]*"/i, "")
+      .replace(/\bonclick="[^"]*"/i, "");
+    if (smiley) {
+      kept = kept.replace(/\s+/g, " ").trim();
+      return `<img src="${picture}"${kept ? " " + kept : ""}>`;
+    }
+    kept = kept.replace(/\s(width|height)="[^"]*"/gi, "").replace(/\s+/g, " ").trim();
+    return `<p><img src="${picture}"${kept ? " " + kept : ""} width="100%"></p>`;
+  });
+}
+
+/** The forum's base URL, for relative paths (`DiscuzAPI.host`). */
+export const HOST_BASE = "https://www.4d4y.com/forum/";

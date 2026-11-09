@@ -1,0 +1,15 @@
+{
+  "name": "DiscoveryOS",
+  "id": "com.nickr.DiscoveryOS",
+  "version": "1.0.0",
+  "build": 1,
+  "rust": ".",
+  "capabilities": {
+    "network": {
+      "hosts": [
+        "www.4d4y.com",
+        "*.4d4y.com"
+      ]
+    }
+  }
+}
