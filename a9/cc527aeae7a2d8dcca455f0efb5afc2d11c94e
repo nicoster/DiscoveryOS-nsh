@@ -1,0 +1,43 @@
+src/ui/ReplyCard.tsx
+  s_dbced879e4bcb7::t_faa52d493ebdb2 1-29
+src/discuz/parse.ts
+  s_dbced879e4bcb7::t_36109518a9b6da 248-296,347-379
+src/ui/ReplyBox.tsx
+  s_dbced879e4bcb7::t_0707d73c05a6db 1-38
+src/ui/ThreadRow.tsx
+  s_dbced879e4bcb7::t_b207f8691b334c 8,18-19,49-52
+src/ui/Forum.tsx
+  s_dbced879e4bcb7::t_1f78dce6a7b7ef 5,10,19,21,48,164-166,168-170,251,259,313-314,375-378,390,410,424,436,445-459,467,477-482,487-495,521-522,559,596,616,622,642,691-693,820-837,852,856,889,894-895,903-908,910-912,914-915,918
+src/ui/favorites.test.ts
+  s_dbced879e4bcb7::t_77a6588cf9b8fb 1-33
+src/discuz/forum.ts
+  s_dbced879e4bcb7::t_bd1692d0abbaeb 2-4,44-49,51,68-96
+src/ui/favorites.ts
+  s_dbced879e4bcb7::t_ab12cd82e002b0 1-94
+src/ui/Thread.tsx
+  s_dbced879e4bcb7::t_01cc4e02000e99 3-4,6-7,15-18,32-44,55-56,63-66,102,128,160,167,169,175-177,193-204,224-235,239-243,245-246,251
+src/discuz/timeAgo.test.ts
+  s_dbced879e4bcb7::t_6c8c7ec50b5c4e 3,20-25
+src/discuz/timeAgo.ts
+  s_dbced879e4bcb7::t_aa91d74897135d 17-27
+src/ui/Conversation.tsx
+  s_dbced879e4bcb7::t_31e002f1bb7272 1-114
+src/discuz/parse.test.ts
+  s_dbced879e4bcb7::t_1e3aea9c0e671f 2,245-335
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a9cc527aeae7a2d8dcca455f0efb5afc2d11c94e",
+  "prompts": {},
+  "sessions": {
+    "s_dbced879e4bcb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76ca6066-6e5f-4230-be7c-598622c94839",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
