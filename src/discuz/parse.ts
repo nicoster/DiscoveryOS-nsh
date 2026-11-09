@@ -41,12 +41,15 @@ export type Post = {
   uid?: string;
   author?: string;
   at?: string;
-  replies: number;
+  /** The reply count, when the page shows it (the user's own threads do not). */
+  replies?: number;
   views?: number;
   lastReplyBy?: string;
   lastReplyAt?: string;
   /** The forum (channel) the thread is in, when the page names it. */
   fid?: string;
+  /** The start of the user's own reply, as the page shows it (My Replies). */
+  excerpt?: string;
 };
 
 /** The channels on the index page (`DiscuzAPI.loadChannels`). */
@@ -87,6 +90,37 @@ export function parsePosts(html: string): Post[] {
   return posts;
 }
 
+/**
+ * The threads a title search returns (`search.php`). Its rows differ from a
+ * forum page's: the title link sits in `th.subject`, the forum is named, and
+ * the keyword's highlight tags are stripped from the title.
+ */
+export function parseSearchResults(html: string): Post[] {
+  const posts: Post[] = [];
+  for (const row of captureGroups(html, "<tr>.*?</tr>")) {
+    const id = /viewthread\.php\?tid=(\d+)/.exec(row)?.[1];
+    const rawTitle = /<th class="subject">[\s\S]*?<a href="viewthread\.php\?tid=\d+[^"]*"[^>]*>([\s\S]*?)<\/a>/.exec(row)?.[1];
+    if (!id || rawTitle === undefined) continue;
+    const forum = /<td class="forum"><a href="forumdisplay\.php\?fid=(\d+)"/.exec(row)?.[1];
+    const author = /<td class="author">[\s\S]*?<a href="space\.php\?uid=(\d+)">([^<]*)<\/a>[\s\S]*?<em>([^<]*)<\/em>/.exec(row);
+    const nums = /<td class="nums"><strong>(\d+)<\/strong> \/ <em>(\d+)<\/em>/.exec(row);
+    const last = /<td class="lastpost">[\s\S]*?<cite><a href="space\.php\?username=[^"]*">([^<]*)<\/a><\/cite>\s*<em><a[^>]*>([^<]*)<\/a><\/em>/.exec(row);
+    posts.push({
+      id,
+      title: htmlDecode(rawTitle.replace(/<[^>]+>/g, "")).trim(),
+      fid: forum,
+      uid: author?.[1],
+      author: author ? removePercentEncoding(author[2]) : undefined,
+      at: author?.[3],
+      replies: Number(nums?.[1]) || 0,
+      views: Number(nums?.[2]) || 0,
+      lastReplyBy: last ? removePercentEncoding(last[1]) : undefined,
+      lastReplyAt: last?.[2],
+    });
+  }
+  return posts;
+}
+
 export type Author = { id: string; name: string; avatar: string };
 export type Reply = {
   id: string;
@@ -114,10 +148,18 @@ export function parseReplies(html: string): Reply[] {
       author: { id: col[1], name: col[2], avatar: col[3] },
       at: col[5],
       seq: Number(col[4]) || -1,
-      body: col[6],
+      body: unescapeNumericEntities(col[6]),
     });
   }
   return replies;
+}
+
+/**
+ * Undoes a second escaping of numeric character references (`&amp;#129309;` ->
+ * `&#129309;`), which the reply pages use for emoji. Other text is left alone.
+ */
+export function unescapeNumericEntities(html: string): string {
+  return html.replace(/&amp;(#x?[0-9a-fA-F]+;)/g, "&$1");
 }
 
 /** Makes relative `src` / `href` paths absolute against `base`, as the Swift
@@ -147,6 +189,58 @@ export function parseBookmarks(html: string): Post[] {
       lastReplyBy: removePercentEncoding(col[5]),
       lastReplyAt: col[6],
     });
+  }
+  return posts;
+}
+
+/**
+ * The threads the signed-in user started (`my.php?item=threads`). A row names the
+ * thread, its forum, and its last poster and date; the page shows no reply count.
+ */
+export function parseMyThreads(html: string): Post[] {
+  const posts: Post[] = [];
+  for (const row of captureGroups(html, "<tr>.*?</tr>")) {
+    const col = captureGroups(
+      row,
+      'viewthread\\.php\\?tid=(\\d+)[^"]*"[^>]*>([^<]+)</a>.*?forumdisplay\\.php\\?fid=(\\d+)"[^>]*>([^<]+)</a>.*?space\\.php\\?username=([^"]*)"[^>]*>([^<]+)</a>.*?goto=lastpost#lastpost"[^>]*>([^<]+)</a>',
+      true,
+    );
+    if (col.length === 0) continue;
+    posts.push({
+      id: col[0],
+      title: htmlDecode(col[1]).trim(),
+      fid: col[2],
+      lastReplyBy: removePercentEncoding(col[5]),
+      lastReplyAt: col[6],
+    });
+  }
+  return posts;
+}
+
+/**
+ * The threads the signed-in user replied to (`my.php?item=posts`). Each reply is two
+ * table rows: the first names the thread (its `redirect` link carries the thread id
+ * `ptid`), its forum, and the reply time; the next row holds the start of the reply
+ * in a `th.lighttxt` cell spanning the columns.
+ */
+export function parseMyReplies(html: string): Post[] {
+  const posts: Post[] = [];
+  let last: Post | undefined;
+  for (const row of captureGroups(html, "<tr>.*?</tr>")) {
+    const col = captureGroups(
+      row,
+      'redirect\\.php\\?goto=findpost(?:&amp;|&)pid=\\d+(?:&amp;|&)ptid=(\\d+)"[^>]*>([^<]+)</a>.*?forumdisplay\\.php\\?fid=(\\d+)"[^>]*>[^<]*</a>.*?(\\d{4}-\\d{1,2}-\\d{1,2} \\d{1,2}:\\d{2})',
+      true,
+    );
+    if (col.length > 0) {
+      last = { id: col[0], title: htmlDecode(col[1]).trim(), fid: col[2], at: col[3], excerpt: "" };
+      posts.push(last);
+      continue;
+    }
+    const text = /<th[^>]*class="lighttxt"[^>]*>([\s\S]*?)<\/th>/.exec(row)?.[1];
+    // The list escapes the reply's entities twice (`&amp;#128077;`), so a second pass
+    // turns them into the characters they stand for.
+    if (last && text !== undefined) last.excerpt = htmlDecode(htmlDecode(text.replace(/<[^>]+>/g, ""))).trim();
   }
   return posts;
 }
@@ -187,8 +281,13 @@ export function mergePage<T extends { id: string }>(
   incoming: T[],
 ): { items: T[]; more: boolean } {
   if (incoming.length === 0) return { items: loaded, more: false };
-  if (loaded.some((x) => x.id === incoming[0].id)) return { items: loaded, more: false };
-  return { items: [...loaded, ...incoming], more: true };
+  // Discuz repeats its sticky threads at the top of every page, so a page can start with a
+  // thread already listed and still hold new ones. The list ends only when nothing is new
+  // (a page past the end repeats the last one it has).
+  const seen = new Set(loaded.map((x) => x.id));
+  const fresh = incoming.filter((x) => !seen.has(x.id));
+  if (fresh.length === 0) return { items: loaded, more: false };
+  return { items: [...loaded, ...fresh], more: true };
 }
 
 /** An absolute URL for a path on the forum (`DiscuzAPI`'s relative paths). */

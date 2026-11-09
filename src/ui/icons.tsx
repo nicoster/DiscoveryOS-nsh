@@ -4,6 +4,34 @@ import { Canvas, cleanup, createMotion, effect, Image, signal, View } from "nsh"
 import { palette } from "./appearance";
 import refreshSvg from "./refresh.svg";
 import sidebarSvg from "./sidebar.svg";
+import searchSvg from "./search.svg";
+import powerSvg from "./power.svg";
+import themeSystemSvg from "./theme-system.svg";
+import themeLightSvg from "./theme-light.svg";
+import themeDarkSvg from "./theme-dark.svg";
+import type { AppearanceMode } from "./appearance";
+
+/** The search icon, in `search.svg`: the same thin line as the refresh arrow. */
+export function SearchIcon(props: { size: number }) {
+  return <Image src={searchSvg} style={{ width: props.size, height: props.size }} />;
+}
+
+/** The sign-out symbol, in `power.svg`; dimmed when it cannot be chosen. */
+export function PowerIcon(props: { size: number; disabled?: boolean }) {
+  return <Image src={powerSvg} style={{ width: props.size, height: props.size, opacity: props.disabled ? 0.4 : 1 }} />;
+}
+
+/** The theme's current setting: a half circle (system), a sun (light) or a moon (dark). */
+export function ThemeIcon(props: { size: number; mode: () => AppearanceMode }) {
+  // Components run once, so the picture switches inside JSX, not by an early return.
+  return (
+    <>
+      {props.mode() === "system" ? <Image src={themeSystemSvg} style={{ width: props.size, height: props.size }} /> : null}
+      {props.mode() === "light" ? <Image src={themeLightSvg} style={{ width: props.size, height: props.size }} /> : null}
+      {props.mode() === "dark" ? <Image src={themeDarkSvg} style={{ width: props.size, height: props.size }} /> : null}
+    </>
+  );
+}
 
 /** The sidebar toggle: a panel with its left column, in `sidebar.svg`. */
 export function SidebarIcon(props: { size: number }) {

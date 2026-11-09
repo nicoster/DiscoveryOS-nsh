@@ -1,13 +1,12 @@
 // The signed-in screens in three columns, as the Swift app's split view:
 // channels | a channel's threads (or favorites) | the open thread.
 // Components run once, so the views switch inside JSX, not by early return.
-import { effect, LayoutAnimation, reduceMotion, Scroll, signal, Text, untracked, View, windowSize, type JSX } from "nsh";
-import { loadBookmarks, loadChannels, loadPosts } from "../discuz/forum";
+import { createAnimatedValue, createMotion, effect, Overlay, type YNode, LayoutAnimation, List, reduceMotion, Scroll, signal, Text, untracked, View, windowSize, type JSX } from "nsh";
+import { loadBookmarks, loadChannels, loadMyReplies, loadMyThreads, loadPosts, searchThreads } from "../discuz/forum";
 import { avatarPicture, userAvatar } from "../discuz/avatarCache";
 import { mergePage, type Channel, type Post } from "../discuz/parse";
 import { dbg } from "../debugConsole";
 import { Thread } from "./Thread";
-import { nearEnd } from "./nearEnd";
 import { LoadingBar } from "./LoadingBar";
 import { channelIcon } from "./channelIcon";
 import { RefreshIcon, SidebarIcon } from "./icons";
@@ -17,11 +16,19 @@ import { Failure } from "./Failure";
 import { ThreadSkeleton } from "./Skeleton";
 import { ThreadRow } from "./ThreadRow";
 import { channelsCollapsed, channelsRailed, FULL_WIDTH, RAIL_BELOW, RAIL_WIDTH, toggleChannelsCollapsed } from "./channelRail";
+import { animateSearchChange, SearchControl, TitleBar, titleBarShown, type SearchProps } from "./TitleBar";
 
 // The name whose avatar a row shows: a channel's thread author. Favorites rows
 // carry no author, so they show the last replier's avatar instead.
 function avatarName(p: Post): string | undefined {
   return p.author ?? p.lastReplyBy;
+}
+
+/** A count in short form: 999 stays, 2389 reads as "2.4k". */
+function compactCount(n: number): string {
+  if (n < 1000) return String(n);
+  const k = Math.floor(n / 100) / 10;
+  return `${k}k`;
 }
 
 /** A failed load: what to say, and what Retry does. */
@@ -33,7 +40,112 @@ interface Failed {
 // The first page of each list as it last loaded, keyed by list. Opening a list again
 // shows it at once while its refresh runs. Cleared on sign-out: an account sees more.
 const FAVORITES_KEY = "favorites";
+const MY_THREADS_KEY = "my-threads";
+const MY_REPLIES_KEY = "my-replies";
 const forumKey = (fid: string) => `forum:${fid}`;
+const searchKey = (term: string) => `search:${term}`;
+
+/** One channel in the list: its icon and title with its new-post count, or in the rail its
+ * icon with the count as a badge. Hovering and being selected fade a tint in and out. */
+function ChannelRow(props: { channel: Channel; selected: () => boolean; railed: () => boolean; onPress: () => void; delay: number }) {
+  const hover = createAnimatedValue(0);
+  const picked = createAnimatedValue(0);
+  // The icon swells as the row is hovered, as the Dock's icons do.
+  const iconScale = hover.interpolate({ inputRange: [0, 1], outputRange: [1, 1.25] });
+  // Opened from the stack, each row slides down into place, a little after the one before it.
+  const entrance = createMotion({ initial: { opacity: 0, translateY: -10 }, enter: "fadeInUp", duration: 220, delay: props.delay });
+  effect(() => {
+    picked.timing(props.selected() ? 1 : 0, { duration: 180 }).catch(() => undefined);
+  });
+  const c = props.channel;
+  // The pill's width follows the count's length, up to the icon's right edge plus a little.
+  const pillWidth = Math.min(30, Math.ceil(compactCount(c.newPosts).length * 6.5) + 6);
+  return (
+    <View
+      onPress={props.onPress}
+      onHoverIn={() => {
+        hover.timing(1, { duration: 120 }).catch(() => undefined);
+      }}
+      onHoverOut={() => {
+        hover.timing(0, { duration: 120 }).catch(() => undefined);
+      }}
+      accessibilityLabel={c.title}
+      style={{ ...entrance.style, padding: 8, borderRadius: 6, alignItems: props.railed() ? "center" : undefined }}
+    >
+      <View
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          borderRadius: 6,
+          backgroundColor: palette().border,
+          opacity: hover.interpolate({ inputRange: [0, 1], outputRange: [0, 0.5] }),
+        }}
+      />
+      <View
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          borderRadius: 6,
+          backgroundColor: palette().selected,
+          opacity: picked,
+        }}
+      />
+      {props.railed() ? (
+        <View>
+          <View style={{ transform: [{ scale: iconScale }] }}>
+            <Text style={{ fontSize: 18, textAlign: "center" }}>{channelIcon(c.title)}</Text>
+          </View>
+          {c.newPosts > 0 ? (
+            // The count at the icon's top-right corner, on a faint pill sized to the count. Where
+            // it runs past the icon's right edge, a gradient of the pill's colour fades it out.
+            <View
+              style={{
+                position: "absolute",
+                top: -2,
+                left: 16,
+                width: pillWidth,
+                height: 14,
+                borderRadius: 7,
+                overflow: "hidden",
+                backgroundColor: palette().surface,
+              }}
+            >
+              <Text numberOfLines={1} style={{ fontSize: 11, color: palette().muted, paddingLeft: 3, lineHeight: 14 }}>
+                {compactCount(c.newPosts)}
+              </Text>
+              {pillWidth > 17 ? (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    bottom: 0,
+                    left: 17,
+                    right: 0,
+                    backgroundImage: `linear-gradient(to right, transparent, ${palette().surface} 70%)`,
+                  }}
+                />
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+      ) : (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={{ width: 22, alignItems: "center", transform: [{ scale: iconScale }] }}>
+            <Text style={{ fontSize: 18, textAlign: "center" }}>{channelIcon(c.title)}</Text>
+          </View>
+          <Text style={{ fontSize: 13, color: palette().text, flex: 1 }}>{c.title}</Text>
+          {c.newPosts > 0 ? <Text style={{ fontSize: 12, color: palette().muted }}>{compactCount(c.newPosts)}</Text> : null}
+        </View>
+      )}
+    </View>
+  );
+}
 
 // `user` is the signed-in name, or null. The forum lists channels and threads for
 // everyone; signing in or out reloads the channel list, since an account sees more.
@@ -41,6 +153,10 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   const channels = signal<Channel[] | null>(null);
   const channel = signal<Channel | null>(null);
   const favorites = signal(false);
+  // The signed-in user's own threads, shown like favorites: their own column-1 entry.
+  const mine = signal(false);
+  // The threads the user replied to: a third list in the same section.
+  const replies = signal(false);
   const thread = signal<Post | null>(null);
   const posts = signal<Post[]>([]);
   const page = signal(1);
@@ -50,12 +166,45 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   const avatars = signal<Record<string, string>>({});
   const asked = new Set<string>();
   const listCache = new Map<string, { items: Post[]; more: boolean }>();
-  // A list opened without a cached copy comes in as a wave once its first page arrives.
-  // `waveDue` is set by the open and spent by that page; `animateRows` is what the rows
-  // read when they are made, and drops after the wave so later rows come in plainly.
-  let waveDue = false;
-  const animateRows = signal(false);
-  const WAVE_MS = 1500;
+  // Title search: the term whose results the threads column shows (null while browsing a
+  // channel or favorites), whether the search field is open, and what it holds.
+  const searchTerm = signal<string | null>(null);
+  const searchOpen = signal(false);
+  const searchDraft = signal("");
+  // Channels with no new posts sit under More. More opens as a menu; the channel the user
+  // picks from it is pinned into the list until another channel opens.
+  const moreOpen = signal(false);
+  const pinned = signal<string | null>(null);
+  // The width of the stack of icons, which decides how many fit.
+  const stackWidth = signal(0);
+  // The rows of the open stack, as the overlay that collapses it is anchored to.
+  const listAnchor = signal<YNode | null>(null);
+  const STACK_ICON = 26;
+  // The distance between icons: wider in the full column, kept in the rail where space is short.
+  const stackStep = () => (railed() ? 12 : 18);
+  const listed = () => (channels() ?? []).filter((c) => c.newPosts > 0 || c.id === pinned());
+  const hidden = () => (channels() ?? []).filter((c) => c.newPosts === 0 && c.id !== pinned());
+
+  // Opening or closing More, and pinning a channel, animate the list's change.
+  function animateListChange() {
+    const curve = { type: "easeInEaseOut" as const };
+    LayoutAnimation.configureNext({
+      duration: 200,
+      update: curve,
+      create: { ...curve, property: "opacity" },
+      delete: { ...curve, property: "opacity" },
+    });
+  }
+  function toggleMore() {
+    animateListChange();
+    moreOpen.set(!moreOpen());
+  }
+  // Going to any other channel or list closes More; picking from More keeps it open.
+  function collapseMore() {
+    if (!moreOpen()) return;
+    animateListChange();
+    moreOpen.set(false);
+  }
 
   // The place saved by the last run, read once; it is applied once, after the
   // channel list first loads, and only if the user has not picked a place since.
@@ -89,7 +238,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
 
   // Saves the channel and thread now open (favorites save no channel).
   function savePlace() {
-    saveLastPlace({ channel: favorites() ? null : channel(), thread: thread() });
+    saveLastPlace({ channel: favorites() || mine() || replies() ? null : channel(), thread: thread() });
   }
 
   function restorePlace(list: Channel[]) {
@@ -97,7 +246,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     placeRestored = true;
     savedPlace.then((place) => {
       const saved = place?.channel;
-      if (!saved || favorites() || channel()) return;
+      if (!saved || favorites() || mine() || replies() || channel()) return;
       const found = list.find((c) => c.id === saved.id);
       if (!found) return;
       openChannel(found);
@@ -149,15 +298,15 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
         moreError.set(null);
         const merged = n === 1 ? { items: list, more: list.length > 0 } : mergePage(posts(), list);
         more.set(merged.more);
-        if (n === 1) {
-          animateRows.set(waveDue);
-          if (waveDue) setTimeout(() => animateRows.set(false), WAVE_MS);
-          waveDue = false;
-        }
         posts.set(merged.items);
         if (n === 1) listCache.set(key, { items: merged.items, more: merged.more });
         loadAvatars(list);
         page.set(n);
+        // A search with hits is done: its field hides, and the results and the header stay.
+        if (n === 1 && list.length > 0 && key === searchKey(searchTerm() ?? "")) {
+          animateSearchChange();
+          searchOpen.set(false);
+        }
       })
       .catch((e) => {
         if (request !== listRequest) return;
@@ -194,6 +343,8 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   }
 
   function loadMore() {
+    // Search results are one page: there is no next page to fetch.
+    if (searchTerm() !== null) return;
     // Once the end shows Retry, scrolling does not fetch again: the button does.
     if (loadingMore || !more() || moreError()) return;
     // Favorites page the same way as a channel: the next page of the favorites.
@@ -201,6 +352,14 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
       loadingMore = true;
       loadingMoreShown.set(true);
       fetchList((p) => loadBookmarks(p), page() + 1, FAVORITES_KEY);
+    } else if (mine()) {
+      loadingMore = true;
+      loadingMoreShown.set(true);
+      fetchList((p) => loadMyThreads(p), page() + 1, MY_THREADS_KEY);
+    } else if (replies()) {
+      loadingMore = true;
+      loadingMoreShown.set(true);
+      fetchList((p) => loadMyReplies(p), page() + 1, MY_REPLIES_KEY);
     } else if (channel()) {
       const c = channel()!;
       loadingMore = true;
@@ -213,7 +372,6 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   // either way its first page is fetched and replaces what is shown.
   function openList(key: string, load: (n: number) => Promise<Post[]>) {
     const cached = listCache.get(key);
-    waveDue = !cached;
     posts.set(cached ? cached.items : []);
     more.set(cached ? cached.more : true);
     page.set(1);
@@ -225,16 +383,55 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   }
 
   function showFavorites() {
+    collapseMore();
+    searchTerm.set(null);
+    searchOpen.set(false);
+    pinned.set(null);
     favorites.set(true);
+    mine.set(false);
+    replies.set(false);
     channel.set(null);
     thread.set(null);
     openList(FAVORITES_KEY, (p) => loadBookmarks(p));
     savePlace();
   }
 
-  function openChannel(c: Channel) {
+  function showMine() {
+    collapseMore();
+    searchTerm.set(null);
+    searchOpen.set(false);
+    mine.set(true);
     favorites.set(false);
+    replies.set(false);
+    channel.set(null);
+    thread.set(null);
+    openList(MY_THREADS_KEY, (p) => loadMyThreads(p));
+    savePlace();
+  }
+
+  function showReplies() {
+    collapseMore();
+    searchTerm.set(null);
+    searchOpen.set(false);
+    replies.set(true);
+    favorites.set(false);
+    mine.set(false);
+    channel.set(null);
+    thread.set(null);
+    openList(MY_REPLIES_KEY, (p) => loadMyReplies(p));
+    savePlace();
+  }
+
+  function openChannel(c: Channel) {
+    collapseMore();
+    searchTerm.set(null);
+    searchOpen.set(false);
+    favorites.set(false);
+    mine.set(false);
+    replies.set(false);
     channel.set(c);
+    // A channel from More stays in the list while it is open; any other pick sends it back.
+    pinned.set(c.newPosts === 0 ? c.id : null);
     thread.set(null);
     openList(forumKey(c.id), (p) => loadPosts(c.id, p));
     savePlace();
@@ -244,6 +441,69 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     thread.set(p);
     savePlace();
   }
+
+  // Shows the threads whose titles contain `term`, in the threads column. The channel or
+  // favorites open before it stays selected in the column, and closing search returns to it.
+  function openSearch(term: string) {
+    const t = term.trim();
+    if (!t) return;
+    searchTerm.set(t);
+    searchOpen.set(true);
+    searchDraft.set(t);
+    openList(searchKey(t), () => searchThreads(t));
+  }
+
+  // Closes the search field. With results showing, the channel or favorites they replaced
+  // comes back; an empty search only hides the field.
+  function closeSearch() {
+    const wasSearching = searchTerm() !== null;
+    searchTerm.set(null);
+    searchOpen.set(false);
+    searchDraft.set("");
+    if (!wasSearching) return;
+    if (favorites()) {
+      openList(FAVORITES_KEY, (p) => loadBookmarks(p));
+    } else if (mine()) {
+      openList(MY_THREADS_KEY, (p) => loadMyThreads(p));
+    } else if (replies()) {
+      openList(MY_REPLIES_KEY, (p) => loadMyReplies(p));
+    } else if (channel()) {
+      const c = channel()!;
+      openList(forumKey(c.id), (p) => loadPosts(c.id, p));
+    } else {
+      posts.set([]);
+      more.set(false);
+      error.set(null);
+    }
+  }
+
+  // The search control, in the title bar or, where the platform draws none, the threads column's header.
+  const searchProps: SearchProps = {
+    open: searchOpen,
+    draft: searchDraft,
+    signedIn: () => !!props.user(),
+    onDraft: (text: string) => searchDraft.set(text),
+    // Submitting searches; the field hides once the results arrive with hits (see fetchList).
+    onSubmit: openSearch,
+    onOpen: () => {
+      animateSearchChange();
+      searchOpen.set(true);
+    },
+    // A press outside the field: the field hides, and its draft goes back to the search shown.
+    onHide: () => {
+      animateSearchChange();
+      searchOpen.set(false);
+      searchDraft.set(searchTerm() ?? "");
+    },
+    onClose: () => {
+      animateSearchChange();
+      closeSearch();
+    },
+  };
+
+  // The threads column's title: the search it shows, else the channel or list open.
+  const headerTitle = () =>
+    searchTerm() !== null ? `包含 “${searchTerm()}” 的帖子` : favorites() ? "Favorites" : mine() ? "My Posts" : replies() ? "My Replies" : channel() ? channel()!.title : "Threads";
 
   // True while the channel list is being fetched: the refresh icon dims and ignores presses.
   const channelsLoading = signal(false);
@@ -276,7 +536,10 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
 
   // Refresh the open list: favorites or the channel's threads, from page 1.
   function refreshThreads() {
-    if (favorites()) showFavorites();
+    if (searchTerm() !== null) openSearch(searchTerm()!);
+    else if (favorites()) showFavorites();
+    else if (mine()) showMine();
+    else if (replies()) showReplies();
     else if (channel()) openChannel(channel()!);
   }
 
@@ -290,11 +553,17 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     untracked(() => {
       if (!signedIn) {
         listRequest++;
+        // Search needs an account: its field and results go with the sign-out.
+        searchTerm.set(null);
+        searchOpen.set(false);
+        searchDraft.set("");
         // Cached lists are per account: they go with the sign-out.
         listCache.clear();
         // The signed-in channel list goes too: the reload below brings the signed-out one.
         channels.set(null);
         favorites.set(false);
+        mine.set(false);
+        replies.set(false);
         channel.set(null);
         thread.set(null);
         posts.set([]);
@@ -312,13 +581,73 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     });
   });
 
+  // A channel row; `delay` staggers its entrance when the stack opens.
+  function renderChannel(c: Channel, delay = 0) {
+    const selected = () => searchTerm() === null && !favorites() && !mine() && !replies() && channel()?.id === c.id;
+    return <ChannelRow channel={c} selected={selected} railed={railed} onPress={() => openChannel(c)} delay={delay} />;
+  }
+
+  // The stack of icons for the channels under More. Each icon overlaps the one before it;
+  // the ones that do not fit are left out, and the first of them fades.
+  function stackCells() {
+    const w = stackWidth();
+    const step = stackStep();
+    const fit = w >= STACK_ICON ? Math.floor((w - STACK_ICON) / step) + 1 : 0;
+    // The first icon is on top: the cells are drawn last to first, so each one covers the next.
+    return hidden()
+      .slice(0, fit + 1)
+      .map((c, i) => ({ c, i }))
+      .reverse()
+      .map(({ c, i }) => (
+        <View
+          style={{
+            position: "absolute",
+            top: 2,
+            left: i * step,
+            width: STACK_ICON,
+            height: STACK_ICON,
+            borderRadius: STACK_ICON / 2,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: palette().surface,
+          }}
+        >
+          <Text style={{ fontSize: 16 }}>{channelIcon(c.title)}</Text>
+          {/* Later icons are paler: a surface-coloured veil over the icon, so each icon stays
+              solid and the one before it still covers the next. The one that does not fit is
+              veiled nearly out. */}
+          <View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: STACK_ICON / 2,
+              backgroundColor: palette().surface,
+              opacity: i < fit ? Math.min(0.7, i * 0.12) : 0.9,
+            }}
+          />
+        </View>
+      ));
+  }
+
   return (
-    <View style={{ flex: 1, alignSelf: "stretch", flexDirection: "row" }}>
+    <View style={{ flex: 1, alignSelf: "stretch" }}>
+      {titleBarShown() ? <TitleBar wide={wide} search={searchProps} /> : null}
+      <View style={{ flex: 1, alignSelf: "stretch", flexDirection: "row" }}>
+      {/* Any press while the channels are open collapses them; presses still reach what is under them. */}
+      {moreOpen() && listAnchor() ? (
+        <Overlay anchor={listAnchor()} onPressOutside={collapseMore}>
+          <View style={{ width: 0, height: 0 }} />
+        </Overlay>
+      ) : null}
       {/* Column 1: channels and favorites, or a rail of their icons */}
       <View style={{ width: railed() ? RAIL_WIDTH : FULL_WIDTH, borderRightWidth: 1, borderColor: palette().border }}>
         <View
           style={{
-            paddingTop: 12,
+            // Under the title bar the header sits flush against it; with no bar, it keeps the top inset.
+            paddingTop: titleBarShown() ? 0 : 12,
             paddingHorizontal: railed() ? 0 : 12,
             paddingBottom: 4,
             flexDirection: "row",
@@ -337,7 +666,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
                 <RefreshIcon size={14} enabled={!channelsLoading()} spinning={channelsLoading()} />
               </View>
             )}
-            {wide() ? (
+            {wide() && !titleBarShown() ? (
               <View
                 onPress={toggleChannelsCollapsed}
                 accessibilityLabel={channelsCollapsed() ? "Expand channels" : "Collapse channels"}
@@ -349,36 +678,28 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
           </View>
         </View>
         <Scroll style={{ flex: 1 }} contentStyle={{ paddingHorizontal: railed() ? 4 : 8, paddingBottom: 8, gap: 4 }}>
-          {(channels() ?? []).map((c) =>
-            railed() ? (
-              <View
-                onPress={() => openChannel(c)}
-                accessibilityLabel={c.title}
-                style={{
-                  padding: 8,
-                  borderRadius: 6,
-                  alignItems: "center",
-                  backgroundColor: !favorites() && channel()?.id === c.id ? palette().selected : "transparent",
-                }}
-              >
-                <Text style={{ fontSize: 18, textAlign: "center" }}>{channelIcon(c.title)}</Text>
-              </View>
-            ) : (
-              <View
-                onPress={() => openChannel(c)}
-                style={{
-                  padding: 8,
-                  borderRadius: 6,
-                  backgroundColor: !favorites() && channel()?.id === c.id ? palette().selected : "transparent",
-                }}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <Text style={{ fontSize: 18, width: 22, textAlign: "center" }}>{channelIcon(c.title)}</Text>
-                  <Text style={{ fontSize: 13, color: palette().text, flex: 1 }}>{c.title}</Text>
+          {/* Channels with new posts, then More: the rest, shown when More is opened. */}
+          {listed().map((c) => renderChannel(c))}
+          {/* Channels without new posts: a stack of their icons; opening it lists them in place. */}
+          {hidden().length > 0 ? (
+            <View>
+              {moreOpen() ? (
+                // The rows are the overlay's anchor: a press on them is not outside it, so it
+                // reaches the row's own press and picks the channel.
+                <View ref={(n) => listAnchor.set(n)}>{hidden().map((c, i) => renderChannel(c, i * 40))}</View>
+              ) : (
+                <View
+                  onPress={toggleMore}
+                  accessibilityLabel="More channels"
+                  style={{ paddingVertical: 4, paddingHorizontal: railed() ? 4 : 8, borderRadius: 6 }}
+                >
+                  <View onLayout={(b) => stackWidth.set(b.size.width)} style={{ height: 30, overflow: "hidden" }}>
+                    {stackCells()}
+                  </View>
                 </View>
-              </View>
-            ),
-          )}
+              )}
+            </View>
+          ) : null}
           {/* Favorites: its own section after the channels, with the same row style. Signed in only. */}
           {props.user() ? (
             <>
@@ -389,7 +710,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
                 style={{
                   padding: 8,
                   borderRadius: 6,
-                  backgroundColor: favorites() ? palette().selected : "transparent",
+                  backgroundColor: favorites() && searchTerm() === null ? palette().selected : "transparent",
                 }}
               >
                 {railed() ? (
@@ -401,6 +722,42 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
                   </View>
                 )}
               </View>
+              <View
+                onPress={showMine}
+                accessibilityLabel="My Posts"
+                style={{
+                  padding: 8,
+                  borderRadius: 6,
+                  backgroundColor: mine() && searchTerm() === null ? palette().selected : "transparent",
+                }}
+              >
+                {railed() ? (
+                  <Text style={{ fontSize: 18, textAlign: "center" }}>📝</Text>
+                ) : (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Text style={{ fontSize: 18, width: 22, textAlign: "center" }}>📝</Text>
+                    <Text style={{ fontSize: 13, color: palette().text, flex: 1 }}>My Posts</Text>
+                  </View>
+                )}
+              </View>
+              <View
+                onPress={showReplies}
+                accessibilityLabel="My Replies"
+                style={{
+                  padding: 8,
+                  borderRadius: 6,
+                  backgroundColor: replies() && searchTerm() === null ? palette().selected : "transparent",
+                }}
+              >
+                {railed() ? (
+                  <Text style={{ fontSize: 18, textAlign: "center" }}>💬</Text>
+                ) : (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Text style={{ fontSize: 18, width: 22, textAlign: "center" }}>💬</Text>
+                    <Text style={{ fontSize: 13, color: palette().text, flex: 1 }}>My Replies</Text>
+                  </View>
+                )}
+              </View>
             </>
           ) : null}
         </Scroll>
@@ -409,48 +766,58 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
 
       {/* Column 2: threads of the channel, or favorites */}
       <View style={{ width: 340, borderRightWidth: 1, borderColor: palette().border }}>
-        <View style={{ padding: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <Text style={{ fontSize: 15, color: palette().text, flex: 1 }}>{favorites() ? "Favorites" : channel() ? channel()!.title : "Threads"}</Text>
+        <View style={{ padding: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+          {searchOpen() && !titleBarShown() ? null : (
+            <Text style={{ fontSize: 15, color: palette().text, flex: 1 }}>{headerTitle()}</Text>
+          )}
+          {titleBarShown() ? null : <SearchControl {...searchProps} />}
           <View
-            onPress={refreshing() || (!favorites() && !channel()) ? undefined : refreshThreads}
+            onPress={refreshing() || (!favorites() && !mine() && !replies() && !channel()) ? undefined : refreshThreads}
             accessibilityLabel="Refresh threads"
             style={{ padding: 4, borderRadius: 6 }}
           >
-            <RefreshIcon size={14} enabled={!refreshing() && (favorites() || !!channel())} spinning={refreshing()} />
+            <RefreshIcon size={14} enabled={!refreshing() && (favorites() || mine() || replies() || !!channel())} spinning={refreshing()} />
           </View>
         </View>
         {error() ? <Failure message={error()!.message} onRetry={() => error()!.retry()} /> : null}
+        {searchTerm() !== null && !listLoading() && !error() && posts().length === 0 ? (
+          <Text style={{ fontSize: 13, color: palette().muted, textAlign: "center", padding: 16 }}>No threads match “{searchTerm()}”.</Text>
+        ) : null}
         {listLoading() ? (
           <Scroll style={{ flex: 1 }}>
             <ThreadSkeleton />
           </Scroll>
         ) : (
-        <Scroll
+        // A virtualized list: only the rows near the viewport exist, and they are reused as
+        // the user scrolls. Its end (loading, failure, or "No more threads.") is the footer.
+        <List
           style={{ flex: 1 }}
           contentStyle={{ padding: 8, gap: 6 }}
-          onScroll={(e) => {
-            if (nearEnd(e)) loadMore();
-          }}
+          each={posts()}
+          estimatedItemSize={64}
+          onLoadMore={loadMore}
+          footer={() => (
+            <View>
+              {loadingMoreShown() ? <LoadingBar /> : null}
+              {moreError() && !loadingMoreShown() ? <Failure message={moreError()!.message} onRetry={() => moreError()!.retry()} /> : null}
+              {!more() && posts().length > 0 && !loadingMoreShown() ? (
+                <Text style={{ fontSize: 13, color: palette().muted, textAlign: "center", padding: 16 }}>No more threads.</Text>
+              ) : null}
+            </View>
+          )}
         >
-          {posts().map((p, i) => (
+          {(item) => (
             <ThreadRow
-              post={p}
-              index={i}
-              entering={animateRows()}
-              selected={() => thread()?.id === p.id}
+              item={item}
+              selected={() => thread()?.id === item().id}
               avatar={() => {
-                const name = avatarName(p);
+                const name = avatarName(item());
                 return name ? avatars()[name] : undefined;
               }}
-              onPress={() => openThread(p)}
+              onPress={() => openThread(item())}
             />
-          ))}
-          {loadingMoreShown() ? <LoadingBar /> : null}
-          {moreError() && !loadingMoreShown() ? <Failure message={moreError()!.message} onRetry={() => moreError()!.retry()} /> : null}
-          {!more() && posts().length > 0 && !loadingMoreShown() ? (
-            <Text style={{ fontSize: 13, color: palette().muted, textAlign: "center", padding: 16 }}>No more threads.</Text>
-          ) : null}
-        </Scroll>
+          )}
+        </List>
         )}
       </View>
 
@@ -472,6 +839,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
             <Text style={{ fontSize: 13, color: palette().muted }}>Select a thread</Text>
           </View>
         )}
+      </View>
       </View>
     </View>
   );

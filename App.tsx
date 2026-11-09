@@ -6,6 +6,8 @@ import { clearCredentials, loadCredentials, saveCredentials } from "./src/discuz
 import { hasSavedCookies } from "./src/discuz/cookies";
 import { Forum } from "./src/ui/Forum";
 import { Toaster } from "./src/ui/toast";
+import { PowerIcon, ThemeIcon } from "./src/ui/icons";
+import { hideSystemTitleBar } from "./src/ui/TitleBar";
 import { appearanceMode, appearanceName, cycleAppearance, palette, restoreAppearance, type AppearanceMode } from "./src/ui/appearance";
 
 // Port of `LoginView` (`Views/MainView.swift`) and `CurrentUserStore`: the forum is
@@ -30,9 +32,8 @@ function Button(props: { label: string; disabled?: boolean; onPress: () => void 
 }
 
 // The account row's icons: the theme's current setting, and the sign-out symbol.
-const THEME_ICON: Record<AppearanceMode, string> = { system: "◐", light: "☀", dark: "☾" };
 
-function IconButton(props: { label: string; title: string; disabled?: boolean; onPress: () => void }) {
+function IconButton(props: { icon: JSX.Element; title: string; disabled?: boolean; onPress: () => void }) {
   return (
     <View
       onPress={props.disabled ? undefined : props.onPress}
@@ -46,7 +47,7 @@ function IconButton(props: { label: string; title: string; disabled?: boolean; o
         backgroundColor: "transparent",
       }}
     >
-      <Text style={{ color: props.disabled ? palette().muted : palette().text, fontSize: 16 }}>{props.label}</Text>
+      {props.icon}
     </View>
   );
 }
@@ -146,8 +147,8 @@ function App() {
           />
         )}
         {compact ? null : <Text style={{ fontSize: 13, color: palette().text, flex: 1 }}>{user() ?? ""}</Text>}
-        <IconButton label={THEME_ICON[appearanceMode()]} title={`Theme: ${appearanceName(appearanceMode())}`} onPress={cycleAppearance} />
-        {user() ? <IconButton label="⏻" title="Sign Out" disabled={busy()} onPress={signOut} /> : null}
+        <IconButton icon={<ThemeIcon size={16} mode={appearanceMode} />} title={`Theme: ${appearanceName(appearanceMode())}`} onPress={cycleAppearance} />
+        {user() ? <IconButton icon={<PowerIcon size={16} disabled={busy()} />} title="Sign Out" disabled={busy()} onPress={signOut} /> : null}
       </View>
     </View>
   );
@@ -227,4 +228,5 @@ function App() {
   );
 }
 
+hideSystemTitleBar();
 mount(App);

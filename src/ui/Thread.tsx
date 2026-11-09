@@ -1,17 +1,17 @@
 // A thread's replies, pages, quote and reply draft (`PostDetailView` of the
 // Swift app). The draft is kept per thread in the app's storage.
-import { Image, Scroll, signal, Storage, Text, View, type PasteEvent } from "nsh";
+import { Image, List, signal, Storage, Text, View, type PasteEvent } from "nsh";
 import { Input, TextView } from "nsh/base";
 import { HOST, postReply, uploadImage } from "../discuz/client";
 import { bookmarkPost, loadReplies, removeBookmark } from "../discuz/forum";
 import { absolutize, absoluteUrl, buildQuote, fixImages, mergePage, trimLeadingBlanks, type Post, type Reply } from "../discuz/parse";
 import { dbg } from "../debugConsole";
 import { timeAgo } from "../discuz/timeAgo";
-import { nearEnd } from "./nearEnd";
 import { LoadingBar } from "./LoadingBar";
 import { Failure } from "./Failure";
 import { notify } from "./toast";
 import { palette } from "./appearance";
+import { titleBarShown } from "./TitleBar";
 import { BubbleIcon, PlaneIcon, StarIcon } from "./icons";
 
 const draftKey = (tid: string) => `draft:${tid}`;
@@ -174,7 +174,8 @@ export function Thread(props: { fid: string; post: Post; favorited?: boolean; si
 
   return (
     <View style={{ flex: 1, alignSelf: "stretch" }}>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, padding: 12 }}>
+      {/* Under the title bar the title sits flush against it; with no bar, it keeps the top inset. */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, padding: 12, paddingTop: titleBarShown() ? 0 : 12 }}>
         <Text style={{ fontSize: 22, fontWeight: 600, color: palette().text }}>{props.post.title}</Text>
         {props.signedIn ? (
           <View onPress={toggleFavorite} accessibilityLabel={saved() ? "Remove from favorites" : "Add to favorites"}>
@@ -184,38 +185,43 @@ export function Thread(props: { fid: string; post: Post; favorited?: boolean; si
       </View>
       {error() ? <Text style={{ fontSize: 13, color: palette().danger, padding: 12 }}>{error()}</Text> : null}
       {failedPage() !== null ? <Failure message="Couldn't load replies." onRetry={() => fetchPage(failedPage()!)} /> : null}
-      <Scroll
+      {/* A virtualized list: only the replies near the viewport exist, and their views are
+          reused as the user scrolls. Each row reads its reply through `item()`. */}
+      <List
         style={{ flex: 1 }}
         contentStyle={{ padding: 12, gap: 12 }}
-        onScroll={(e) => {
-          if (nearEnd(e)) loadMore();
-        }}
+        each={replies()}
+        estimatedItemSize={180}
+        onLoadMore={loadMore}
+        footer={() => <View>{loadingMoreShown() ? <LoadingBar /> : null}</View>}
       >
-        {replies().map((r) => (
+        {(item) => (
           <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 10, borderRadius: 8, backgroundColor: palette().surface }}>
             {/* Two columns, as the Swift app: the avatar on the left, and beside it the
                 meta line over the body, so the body starts under the name. */}
-            {r.author.avatar ? (
-              <Image src={absoluteUrl(r.author.avatar, HOST)} style={{ width: 36, height: 36, borderRadius: 6 }} />
+            {item().author.avatar ? (
+              <Image src={absoluteUrl(item().author.avatar!, HOST)} style={{ width: 36, height: 36, borderRadius: 6 }} />
             ) : (
               <View style={{ width: 36 }} />
             )}
             <View style={{ flex: 1, gap: 6 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Text style={{ fontSize: 13, color: palette().text }}>{r.author.name}</Text>
-                <Text style={{ fontSize: 12, color: palette().muted }}>{`#${r.seq} · ${timeAgo(r.at)}`}</Text>
+                <Text style={{ fontSize: 13, color: palette().text }}>{item().author.name}</Text>
+                <Text style={{ fontSize: 12, color: palette().muted }}>{`#${item().seq} · ${timeAgo(item().at)}`}</Text>
                 {props.signedIn ? (
-                  <View onPress={() => quote(r)} accessibilityLabel="Quote">
+                  <View onPress={() => quote(item())} accessibilityLabel="Quote">
                     <BubbleIcon size={16} />
                   </View>
                 ) : null}
               </View>
-              <TextView html={absolutize(trimLeadingBlanks(fixImages(r.body)), HOST)} styles={r.seq === 1 ? OP_TITLE_STYLES : undefined} />
+              <TextView
+                html={absolutize(trimLeadingBlanks(fixImages(item().body)), HOST)}
+                styles={item().seq === 1 ? OP_TITLE_STYLES : undefined}
+              />
             </View>
           </View>
-        ))}
-        {loadingMoreShown() ? <LoadingBar /> : null}
-      </Scroll>
+        )}
+      </List>
       {/* The Send button sits inside the reply box, under the text, at its right edge. Signed out, there is no reply box. */}
       {props.signedIn ? (
       <View style={{ alignSelf: "stretch", margin: 12, padding: 8, gap: 4, borderRadius: 8, backgroundColor: palette().surface }}>
