@@ -1,5 +1,5 @@
 import { expect, test } from "nsh/test";
-import { absolutize, buildQuote, captureGroups, htmlDecode, parseBookmarks, parseChannels, parseMyReplies, parseMyThreads, unescapeNumericEntities, parsePosts, parseReplies, parseSearchResults, parseUser, mergePage, fixImages, removePercentEncoding, trimLeadingBlanks } from "./parse";
+import { parsePmConversation, parsePmUsers, absolutize, buildQuote, captureGroups, htmlDecode, parseBookmarks, parseChannels, parseMyReplies, parseMyThreads, unescapeNumericEntities, parsePosts, parseReplies, parseSearchResults, parseUser, mergePage, fixImages, removePercentEncoding, trimLeadingBlanks, threadIdFromLink, parseThreadPageInfo } from "./parse";
 
 test("captureGroups returns one match's groups, or every whole match", () => {
   expect(captureGroups("a1b", "a(\\d)b", true)).toEqual(["1"]);
@@ -241,4 +241,95 @@ test("parses the threads of a title search, without the keyword's highlight tags
     },
   ]);
   expect(parseSearchResults("<table><tr><td>没有找到匹配的结果</td></tr></table>")).toEqual([]);
+});
+
+test("parses the private-message list: one row per correspondent", () => {
+  const html = `
+<form method="post" id="pmform" action="pm.php?action=del&amp;filter=privatepm&amp;page=1">
+<ul class="pm_list"><li id="pm_10137545" class="s_clear ">
+<a href="space.php?uid=612354" target="_blank" class="avatar"><img src="https://img02.4d4y.com/forum/uc_server/data/avatar/000/61/23/54_avatar_small.jpg" /></a>
+<p class="cite">
+<cite><a href="space.php?uid=612354" target="_blank">eistein</a></cite>2026-6-24 20:03</p>
+<div class="summary">
+</div>
+<p class="more"><a href="pm.php?uid=612354&amp;filter=privatepm&amp;daterange=5#new" class="to">查看消息</a></p>
+<span class="action">
+<input name="uid[]" class="checkbox" type="checkbox" value="612354" />
+</span>
+</li><li id="pm_9801850" class="s_clear colplural">
+<a href="space.php?uid=549058" target="_blank" class="avatar"><img src="https://img02.4d4y.com/forum/uc_server/data/avatar/000/54/90/58_avatar_small.jpg" /></a>
+<p class="cite">
+<cite><a href="space.php?uid=549058" target="_blank">llwzw</a></cite>2023-8-28 21:44</p>
+<div class="summary">
+</div>
+<p class="more"><a href="pm.php?uid=549058&amp;filter=privatepm&amp;daterange=5#new" class="to">查看消息</a></p>
+</li></ul>`;
+  expect(parsePmUsers(html)).toEqual([
+    { id: "612354", title: "eistein", author: "eistein", at: "2026-6-24 20:03", excerpt: "" },
+    { id: "549058", title: "llwzw", author: "llwzw", at: "2023-8-28 21:44", excerpt: "" },
+  ]);
+});
+
+test("parses a private-message conversation: sender, time, text and avatar, oldest first", () => {
+  const html = `
+<ul class="pm_list">
+<li class="pm_date"><strong>2025-1-6</strong></li><li id="pm_10137547" class="s_clear ">
+<a href="space.php?uid=612354" class="avatar"><img src="https://img02.4d4y.com/forum/uc_server/data/avatar/000/61/23/54_avatar_small.jpg" onerror="this.onerror=null;this.src='x.gif'" /></a>
+<p class="cite">
+<cite>eistein</cite>
+2025-1-6 20:39</p>
+<div class="summary">兄弟你好，请问升降桌好用么？</div>
+<span class="action">
+<a href="pm.php?action=new&amp;pmid=10137547" onclick="showWindow('sendpm', this.href);return false;">转发</a>
+</span>
+</li>
+<li class="pm_date"><strong>2026-6-24</strong></li><li id="pm_10376547" class="s_clear self">
+<a class="avatar"><img src="https://img02.4d4y.com/forum/uc_server/data/avatar/000/20/52/08_avatar_small.jpg" onerror="this.onerror=null;this.src='x.gif'" /></a>
+<p class="cite">
+<cite>nicoster</cite>
+2026-6-24 17:26</p>
+<div class="summary">才看到消息. <br />
+<br />
+我买过两种.</div>
+<span class="action">
+<a href="pm.php?action=new&amp;pmid=10376547" onclick="showWindow('sendpm', this.href);return false;">转发</a>
+</span>
+</li>
+</ul>`;
+  expect(parsePmConversation(html)).toEqual([
+    {
+      author: "eistein",
+      at: "2025-1-6 20:39",
+      body: "兄弟你好，请问升降桌好用么？",
+      avatar: "https://img02.4d4y.com/forum/uc_server/data/avatar/000/61/23/54_avatar_small.jpg",
+    },
+    {
+      author: "nicoster",
+      at: "2026-6-24 17:26",
+      body: "才看到消息. <br />\n<br />\n我买过两种.",
+      avatar: "https://img02.4d4y.com/forum/uc_server/data/avatar/000/20/52/08_avatar_small.jpg",
+    },
+  ]);
+});
+
+test("a private message's numeric references are unescaped as a reply's are", () => {
+  const html = `<ul class="pm_list"><li id="pm_1"><a href="space.php?uid=5"><img src="a.jpg" /></a>
+<p class="cite"><cite><a href="space.php?uid=5">nicoster</a></cite>2019-1-12 17:38</p>
+<div class="summary">&amp;#128077; 非常感谢!</div></li></ul>`;
+  expect(parsePmConversation(html)[0].body).toBe("&#128077; 非常感谢!");
+});
+
+test("reads the thread a 4d4y link opens, and nothing else", () => {
+  expect(threadIdFromLink("https://www.4d4y.com/forum/viewthread.php?tid=3464174")).toBe("3464174");
+  expect(threadIdFromLink("https://4d4y.com/forum/forum.php?mod=viewthread&tid=12")).toBe("12");
+  expect(threadIdFromLink("https://www.4d4y.com/forum/forum.php?mod=forumdisplay&fid=3")).toBe(undefined);
+  expect(threadIdFromLink("https://www.4d4y.com/forum/viewthread.php?tid=abc")).toBe(undefined);
+  expect(threadIdFromLink("https://evil.example.com/forum/viewthread.php?tid=1")).toBe(undefined);
+  expect(threadIdFromLink("https://4d4y.com.evil.example/viewthread.php?tid=1")).toBe(undefined);
+  expect(threadIdFromLink("javascript:viewthread.php?tid=1")).toBe(undefined);
+});
+
+test("reads a thread page's title and forum", () => {
+  expect(parseThreadPageInfo('<span id="thread_subject">A &amp; <b>B</b></span><a href="forumdisplay.php?fid=7">x</a>')).toEqual({ title: "A & B", fid: "7" });
+  expect(parseThreadPageInfo("<title>标题 - 4D4Y</title>")).toEqual({ title: "标题", fid: undefined });
 });

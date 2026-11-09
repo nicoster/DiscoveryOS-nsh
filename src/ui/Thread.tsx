@@ -1,10 +1,10 @@
 // A thread's replies, pages, quote and reply draft (`PostDetailView` of the
 // Swift app). The draft is kept per thread in the app's storage.
-import { Image, List, signal, Storage, Text, View, type PasteEvent } from "nsh";
-import { Input, TextView } from "nsh/base";
+import { List, signal, Storage, Text, View, type PasteEvent } from "nsh";
+import { TextView } from "nsh/base";
 import { HOST, postReply, uploadImage } from "../discuz/client";
-import { bookmarkPost, loadReplies, removeBookmark } from "../discuz/forum";
-import { absolutize, absoluteUrl, buildQuote, fixImages, mergePage, trimLeadingBlanks, type Post, type Reply } from "../discuz/parse";
+import { bookmarkPost, loadReplyPage, removeBookmark } from "../discuz/forum";
+import { absolutize, absoluteUrl, buildQuote, fixImages, mergePage, threadIdFromLink, trimLeadingBlanks, type Post, type Reply } from "../discuz/parse";
 import { dbg } from "../debugConsole";
 import { timeAgo } from "../discuz/timeAgo";
 import { LoadingBar } from "./LoadingBar";
@@ -12,7 +12,10 @@ import { Failure } from "./Failure";
 import { notify } from "./toast";
 import { palette } from "./appearance";
 import { titleBarShown } from "./TitleBar";
-import { BubbleIcon, PlaneIcon, StarIcon } from "./icons";
+import { BubbleIcon, StarIcon } from "./icons";
+import { ReplyCard } from "./ReplyCard";
+import { ReplyBox } from "./ReplyBox";
+import { isFavorite, markFavorite } from "./favorites";
 
 const draftKey = (tid: string) => `draft:${tid}`;
 
@@ -26,7 +29,19 @@ const OP_TITLE_STYLES = {
 } as const;
 
 // `signedIn` gates what needs an account: the favorite star, quoting and replying.
-export function Thread(props: { fid: string; post: Post; favorited?: boolean; signedIn?: boolean; onUnfavorited?: () => void }) {
+// `onOpenThread` takes a press on a link to another 4d4y thread; `onBack` shows a Back control
+// (a thread opened from a link, whose title and forum come from its first page).
+export function Thread(props: {
+  fid: string;
+  post: Post;
+  signedIn?: boolean;
+  onUnfavorited?: () => void;
+  onOpenThread?: (tid: string) => void;
+  onBack?: () => void;
+}) {
+  // The title and forum: the post's own, or those the first page names for a thread opened from a link.
+  const title = signal(props.post.title);
+  const fid = signal(props.fid);
   const replies = signal<Reply[]>([]);
   const page = signal(1);
   const more = signal(true);
@@ -37,17 +52,18 @@ export function Thread(props: { fid: string; post: Post; favorited?: boolean; si
   const draft = signal("");
   const sending = signal(false);
   const uploading = signal(false);
-  // Whether the thread is in the favorites: known from the list it was opened
-  // from (`favorited`), else learned by adding it.
-  const saved = signal<boolean | null>(props.favorited ?? null);
+  // Whether the thread is in the favorites: the shared list, which the thread lists star from.
+  const saved = () => isFavorite(props.post.id);
 
   let loadingMore = false;
   const loadingMoreShown = signal(false);
 
   function fetchPage(n: number) {
     failedPage.set(null);
-    loadReplies(props.post.id, n)
-      .then((list) => {
+    loadReplyPage(props.post.id, n)
+      .then(({ title: pageTitle, fid: pageFid, replies: list }) => {
+        if (n === 1 && pageTitle) title.set(pageTitle);
+        if (n === 1 && pageFid && !fid()) fid.set(pageFid);
         for (const r of list) {
           const fixed = fixImages(r.body);
           dbg("reply", r.seq, "pictures", (fixed.match(/<img\b/gi) ?? []).length, "srcs", (fixed.match(/<img\b[^>]*src="[^"]*"/gi) ?? []).map((t) => t.replace(/^.*src="/, "").slice(-60)));
@@ -83,7 +99,7 @@ export function Thread(props: { fid: string; post: Post; favorited?: boolean; si
     sending.set(true);
     error.set(null);
     try {
-      await postReply(props.fid, props.post.id, draft());
+      await postReply(fid(), props.post.id, draft());
       notify("reply", "Reply posted.");
       await setDraft("");
       replies.set([]);
@@ -109,7 +125,7 @@ export function Thread(props: { fid: string; post: Post; favorited?: boolean; si
       uploadQueue = uploadQueue.then(async () => {
         try {
           error.set(null);
-          const tag = `[attachimg]${await uploadImage(props.fid, props.post.id, file)}[/attachimg]`;
+          const tag = `[attachimg]${await uploadImage(fid(), props.post.id, file)}[/attachimg]`;
           await setDraft(draft() ? `${draft()}\n${tag}` : tag);
         } catch (e) {
           dbg("upload failed", file.name, String(e));
@@ -141,24 +157,24 @@ export function Thread(props: { fid: string; post: Post; favorited?: boolean; si
   }
 
   function quote(r: Reply) {
-    const text = buildQuote(HOST, { id: props.post.id, title: props.post.title }, r) + draft();
+    const text = buildQuote(HOST, { id: props.post.id, title: title() }, r) + draft();
     setDraft(text);
   }
 
   // Adds the thread to the favorites, or removes it when it is saved.
   async function toggleFavorite() {
     try {
-      if (saved() === true) {
+      if (saved()) {
         if (await removeBookmark(props.post.id)) {
-          saved.set(false);
+          markFavorite(props.post.id, false);
           notify("favorite", "Removed from favorites.");
           props.onUnfavorited?.();
         } else {
           error.set("Couldn't remove from favorites. Try again.");
         }
-      } else {
-        saved.set(await bookmarkPost(props.post.id));
-        if (saved() === true) notify("favorite", "Added to favorites.");
+      } else if (await bookmarkPost(props.post.id)) {
+        markFavorite(props.post.id, true, props.post.lastReplyAt ?? props.post.at);
+        notify("favorite", "Added to favorites.");
       }
     } catch (e) {
       dbg("favorite failed", props.post.id, String(e));
@@ -174,9 +190,18 @@ export function Thread(props: { fid: string; post: Post; favorited?: boolean; si
 
   return (
     <View style={{ flex: 1, alignSelf: "stretch" }}>
-      {/* Under the title bar the title sits flush against it; with no bar, it keeps the top inset. */}
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, padding: 12, paddingTop: titleBarShown() ? 0 : 12 }}>
-        <Text style={{ fontSize: 22, fontWeight: 600, color: palette().text }}>{props.post.title}</Text>
+      {/* Under the title bar the title sits in the bar's caption area (the column extends up into it), centred
+          on the bar's 44pt; it drags the window where nothing presses. With no bar, it keeps the top inset. */}
+      <View
+        desktop={{ windowDrag: true }}
+        style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, padding: 12, paddingTop: titleBarShown() ? 10.5 : 12 }}
+      >
+        {props.onBack ? (
+          <View onPress={props.onBack} accessibilityLabel="Back" style={{ position: "absolute", left: 12, paddingVertical: 4, paddingHorizontal: 6 }}>
+            <Text style={{ fontSize: 13, color: palette().muted }}>{"‹ Back"}</Text>
+          </View>
+        ) : null}
+        <Text style={{ fontSize: 22, fontWeight: 600, color: palette().text }}>{title()}</Text>
         {props.signedIn ? (
           <View onPress={toggleFavorite} accessibilityLabel={saved() ? "Remove from favorites" : "Add to favorites"}>
             {saved() ? <StarIcon size={20} filled={true} /> : <StarIcon size={20} />}
@@ -196,54 +221,34 @@ export function Thread(props: { fid: string; post: Post; favorited?: boolean; si
         footer={() => <View>{loadingMoreShown() ? <LoadingBar /> : null}</View>}
       >
         {(item) => (
-          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 10, borderRadius: 8, backgroundColor: palette().surface }}>
-            {/* Two columns, as the Swift app: the avatar on the left, and beside it the
-                meta line over the body, so the body starts under the name. */}
-            {item().author.avatar ? (
-              <Image src={absoluteUrl(item().author.avatar!, HOST)} style={{ width: 36, height: 36, borderRadius: 6 }} />
-            ) : (
-              <View style={{ width: 36 }} />
-            )}
-            <View style={{ flex: 1, gap: 6 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Text style={{ fontSize: 13, color: palette().text }}>{item().author.name}</Text>
-                <Text style={{ fontSize: 12, color: palette().muted }}>{`#${item().seq} · ${timeAgo(item().at)}`}</Text>
-                {props.signedIn ? (
-                  <View onPress={() => quote(item())} accessibilityLabel="Quote">
-                    <BubbleIcon size={16} />
-                  </View>
-                ) : null}
-              </View>
+          <ReplyCard
+            avatar={item().author.avatar ? absoluteUrl(item().author.avatar!, HOST) : undefined}
+            name={item().author.name}
+            meta={`#${item().seq} · ${timeAgo(item().at)}`}
+            trailing={
+              props.signedIn ? (
+                <View onPress={() => quote(item())} accessibilityLabel="Quote">
+                  <BubbleIcon size={16} />
+                </View>
+              ) : null
+            }
+            body={
               <TextView
                 html={absolutize(trimLeadingBlanks(fixImages(item().body)), HOST)}
                 styles={item().seq === 1 ? OP_TITLE_STYLES : undefined}
+                onLinkPress={(e) => {
+                  // A 4d4y thread link opens in this column; any other link is left as it was.
+                  const tid = threadIdFromLink(e.url);
+                  if (tid && props.onOpenThread) props.onOpenThread(tid);
+                }}
               />
-            </View>
-          </View>
+            }
+          />
         )}
       </List>
       {/* The Send button sits inside the reply box, under the text, at its right edge. Signed out, there is no reply box. */}
       {props.signedIn ? (
-      <View style={{ alignSelf: "stretch", margin: 12, padding: 8, gap: 4, borderRadius: 8, backgroundColor: palette().surface }}>
-        <Input
-          placeholder="Reply"
-          multiline={true}
-          value={draft()}
-          onChange={(text: string) => setDraft(text)}
-          onPaste={onPaste}
-          style={{ minHeight: 56, padding: 4, fontSize: 14, backgroundColor: "transparent" }}
-        />
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
-          {uploading() ? <Text style={{ fontSize: 12, color: palette().muted }}>Uploading…</Text> : null}
-          <View
-            onPress={sending() || uploading() || draft().length === 0 ? undefined : send}
-            accessibilityLabel="Send"
-            style={{ padding: 4 }}
-          >
-            <PlaneIcon size={18} enabled={() => !sending() && draft().length > 0} />
-          </View>
-        </View>
-      </View>
+        <ReplyBox draft={() => draft()} onDraft={(text) => setDraft(text)} sending={() => sending()} uploading={() => uploading()} onSend={send} onPaste={onPaste} />
       ) : null}
     </View>
   );

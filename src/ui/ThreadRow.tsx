@@ -5,6 +5,7 @@ import { createAnimatedValue, Image, Text, View } from "nsh";
 import type { Post } from "../discuz/parse";
 import { timeAgo } from "../discuz/timeAgo";
 import { palette } from "./appearance";
+import { StarIcon } from "./icons";
 
 function meta(p: Post): string {
   return [p.author, (p.lastReplyAt ?? p.at) ? timeAgo(p.lastReplyAt ?? p.at!) : undefined].filter(Boolean).join(" · ");
@@ -14,6 +15,8 @@ export function ThreadRow(props: {
   item: () => Post;
   selected: () => boolean;
   avatar: () => string | undefined;
+  // Whether the thread is a favorite: a solid star before its title.
+  favorite: () => boolean;
   onPress: () => void;
 }) {
   // The avatar swells as the row is hovered, as the Dock's icons do.
@@ -43,7 +46,10 @@ export function ThreadRow(props: {
         </View>
       ) : null}
       <View style={{ flex: 1, gap: 3 }}>
-        <Text style={{ fontSize: 13, color: palette().text }}>{props.item().title}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          {props.favorite() ? <StarIcon size={11} filled={true} /> : null}
+          <Text style={{ fontSize: 13, color: palette().text, flex: 1 }}>{props.item().title}</Text>
+        </View>
         {/* My Replies rows: the reply's text takes the second line, and the time moves to the right. */}
         {props.item().excerpt !== undefined ? (
           props.item().excerpt ? <Text style={{ fontSize: 12, color: palette().muted }}>{props.item().excerpt}</Text> : null

@@ -2,11 +2,12 @@
 // channels | a channel's threads (or favorites) | the open thread.
 // Components run once, so the views switch inside JSX, not by early return.
 import { createAnimatedValue, createMotion, effect, Overlay, type YNode, LayoutAnimation, List, reduceMotion, Scroll, signal, Text, untracked, View, windowSize, type JSX } from "nsh";
-import { loadBookmarks, loadChannels, loadMyReplies, loadMyThreads, loadPosts, searchThreads } from "../discuz/forum";
+import { loadBookmarks, loadChannels, loadMyReplies, loadMyThreads, loadPmUsers, loadPosts, searchThreads } from "../discuz/forum";
 import { avatarPicture, userAvatar } from "../discuz/avatarCache";
 import { mergePage, type Channel, type Post } from "../discuz/parse";
 import { dbg } from "../debugConsole";
 import { Thread } from "./Thread";
+import { Conversation } from "./Conversation";
 import { LoadingBar } from "./LoadingBar";
 import { channelIcon } from "./channelIcon";
 import { RefreshIcon, SidebarIcon } from "./icons";
@@ -15,7 +16,9 @@ import { loadLastPlace, saveLastPlace } from "./lastPlace";
 import { Failure } from "./Failure";
 import { ThreadSkeleton } from "./Skeleton";
 import { ThreadRow } from "./ThreadRow";
+import { clearFavoriteIds, isFavorite, reconcileFavorites } from "./favorites";
 import { channelsCollapsed, channelsRailed, FULL_WIDTH, RAIL_BELOW, RAIL_WIDTH, toggleChannelsCollapsed } from "./channelRail";
+import { titleBar } from "nsh/desktop";
 import { animateSearchChange, SearchControl, TitleBar, titleBarShown, type SearchProps } from "./TitleBar";
 
 // The name whose avatar a row shows: a channel's thread author. Favorites rows
@@ -42,6 +45,7 @@ interface Failed {
 const FAVORITES_KEY = "favorites";
 const MY_THREADS_KEY = "my-threads";
 const MY_REPLIES_KEY = "my-replies";
+const MESSAGES_KEY = "messages";
 const forumKey = (fid: string) => `forum:${fid}`;
 const searchKey = (term: string) => `search:${term}`;
 
@@ -157,7 +161,13 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   const mine = signal(false);
   // The threads the user replied to: a third list in the same section.
   const replies = signal(false);
+  // Private messages: a list of correspondents, and the one whose messages are open.
+  const messages = signal(false);
+  const peer = signal<Post | null>(null);
   const thread = signal<Post | null>(null);
+  // Threads opened from a 4d4y link in the open thread, the last one shown in its column; Back pops one.
+  // The threads column and its selection stay as they were.
+  const detour = signal<Post[]>([]);
   const posts = signal<Post[]>([]);
   const page = signal(1);
   const more = signal(false);
@@ -238,7 +248,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
 
   // Saves the channel and thread now open (favorites save no channel).
   function savePlace() {
-    saveLastPlace({ channel: favorites() || mine() || replies() ? null : channel(), thread: thread() });
+    saveLastPlace({ channel: favorites() || mine() || replies() || messages() ? null : channel(), thread: thread() });
   }
 
   function restorePlace(list: Channel[]) {
@@ -246,7 +256,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     placeRestored = true;
     savedPlace.then((place) => {
       const saved = place?.channel;
-      if (!saved || favorites() || mine() || replies() || channel()) return;
+      if (!saved || favorites() || mine() || replies() || messages() || channel()) return;
       const found = list.find((c) => c.id === saved.id);
       if (!found) return;
       openChannel(found);
@@ -300,6 +310,8 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
         more.set(merged.more);
         posts.set(merged.items);
         if (n === 1) listCache.set(key, { items: merged.items, more: merged.more });
+        // The favorites loaded so far are saved, and saved favorites the list has dropped are pruned.
+        if (key === FAVORITES_KEY) reconcileFavorites(merged.items, !merged.more);
         loadAvatars(list);
         page.set(n);
         // A search with hits is done: its field hides, and the results and the header stay.
@@ -360,6 +372,10 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
       loadingMore = true;
       loadingMoreShown.set(true);
       fetchList((p) => loadMyReplies(p), page() + 1, MY_REPLIES_KEY);
+    } else if (messages()) {
+      loadingMore = true;
+      loadingMoreShown.set(true);
+      fetchList((p) => loadPmUsers(p), page() + 1, MESSAGES_KEY);
     } else if (channel()) {
       const c = channel()!;
       loadingMore = true;
@@ -371,6 +387,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   // Opens a list: from the cache at once when it is there, placeholder rows otherwise;
   // either way its first page is fetched and replaces what is shown.
   function openList(key: string, load: (n: number) => Promise<Post[]>) {
+    detour.set([]);
     const cached = listCache.get(key);
     posts.set(cached ? cached.items : []);
     more.set(cached ? cached.more : true);
@@ -390,6 +407,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     favorites.set(true);
     mine.set(false);
     replies.set(false);
+    messages.set(false);
     channel.set(null);
     thread.set(null);
     openList(FAVORITES_KEY, (p) => loadBookmarks(p));
@@ -403,6 +421,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     mine.set(true);
     favorites.set(false);
     replies.set(false);
+    messages.set(false);
     channel.set(null);
     thread.set(null);
     openList(MY_THREADS_KEY, (p) => loadMyThreads(p));
@@ -414,11 +433,27 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     searchTerm.set(null);
     searchOpen.set(false);
     replies.set(true);
+    messages.set(false);
     favorites.set(false);
     mine.set(false);
     channel.set(null);
     thread.set(null);
     openList(MY_REPLIES_KEY, (p) => loadMyReplies(p));
+    savePlace();
+  }
+
+  function showMessages() {
+    collapseMore();
+    searchTerm.set(null);
+    searchOpen.set(false);
+    messages.set(true);
+    favorites.set(false);
+    mine.set(false);
+    replies.set(false);
+    channel.set(null);
+    thread.set(null);
+    peer.set(null);
+    openList(MESSAGES_KEY, (p) => loadPmUsers(p));
     savePlace();
   }
 
@@ -429,6 +464,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     favorites.set(false);
     mine.set(false);
     replies.set(false);
+    messages.set(false);
     channel.set(c);
     // A channel from More stays in the list while it is open; any other pick sends it back.
     pinned.set(c.newPosts === 0 ? c.id : null);
@@ -438,8 +474,23 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   }
 
   function openThread(p: Post) {
+    if (messages()) {
+      detour.set([]);
+      peer.set(p);
+      return;
+    }
+    detour.set([]);
     thread.set(p);
     savePlace();
+  }
+
+  // A 4d4y thread link pressed in the open thread: its thread replaces the column's, until Back.
+  function openLinkedThread(tid: string) {
+    detour.set([...detour(), { id: tid, title: "" }]);
+  }
+
+  function backFromLink() {
+    detour.set(detour().slice(0, -1));
   }
 
   // Shows the threads whose titles contain `term`, in the threads column. The channel or
@@ -467,6 +518,8 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
       openList(MY_THREADS_KEY, (p) => loadMyThreads(p));
     } else if (replies()) {
       openList(MY_REPLIES_KEY, (p) => loadMyReplies(p));
+    } else if (messages()) {
+      openList(MESSAGES_KEY, (p) => loadPmUsers(p));
     } else if (channel()) {
       const c = channel()!;
       openList(forumKey(c.id), (p) => loadPosts(c.id, p));
@@ -503,7 +556,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
 
   // The threads column's title: the search it shows, else the channel or list open.
   const headerTitle = () =>
-    searchTerm() !== null ? `包含 “${searchTerm()}” 的帖子` : favorites() ? "Favorites" : mine() ? "My Posts" : replies() ? "My Replies" : channel() ? channel()!.title : "Threads";
+    searchTerm() !== null ? `包含 “${searchTerm()}” 的帖子` : favorites() ? "Favorites" : mine() ? "My Posts" : replies() ? "My Replies" : messages() ? "Messages" : channel() ? channel()!.title : "Threads";
 
   // True while the channel list is being fetched: the refresh icon dims and ignores presses.
   const channelsLoading = signal(false);
@@ -540,6 +593,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     else if (favorites()) showFavorites();
     else if (mine()) showMine();
     else if (replies()) showReplies();
+    else if (messages()) showMessages();
     else if (channel()) openChannel(channel()!);
   }
 
@@ -559,11 +613,13 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
         searchDraft.set("");
         // Cached lists are per account: they go with the sign-out.
         listCache.clear();
+        clearFavoriteIds();
         // The signed-in channel list goes too: the reload below brings the signed-out one.
         channels.set(null);
         favorites.set(false);
         mine.set(false);
         replies.set(false);
+        messages.set(false);
         channel.set(null);
         thread.set(null);
         posts.set([]);
@@ -583,7 +639,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
 
   // A channel row; `delay` staggers its entrance when the stack opens.
   function renderChannel(c: Channel, delay = 0) {
-    const selected = () => searchTerm() === null && !favorites() && !mine() && !replies() && channel()?.id === c.id;
+    const selected = () => searchTerm() === null && !favorites() && !mine() && !replies() && !messages() && channel()?.id === c.id;
     return <ChannelRow channel={c} selected={selected} railed={railed} onPress={() => openChannel(c)} delay={delay} />;
   }
 
@@ -631,6 +687,9 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
         </View>
       ));
   }
+
+  // The thread the column shows: the last thread opened from a link, else the list's thread.
+  const shownThread = () => (detour().length > 0 ? detour()[detour().length - 1] : thread());
 
   return (
     <View style={{ flex: 1, alignSelf: "stretch" }}>
@@ -758,6 +817,24 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
                   </View>
                 )}
               </View>
+              <View
+                onPress={showMessages}
+                accessibilityLabel="Messages"
+                style={{
+                  padding: 8,
+                  borderRadius: 6,
+                  backgroundColor: messages() && searchTerm() === null ? palette().selected : "transparent",
+                }}
+              >
+                {railed() ? (
+                  <Text style={{ fontSize: 18, textAlign: "center" }}>✉️</Text>
+                ) : (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Text style={{ fontSize: 18, width: 22, textAlign: "center" }}>✉️</Text>
+                    <Text style={{ fontSize: 13, color: palette().text, flex: 1 }}>Messages</Text>
+                  </View>
+                )}
+              </View>
             </>
           ) : null}
         </Scroll>
@@ -772,11 +849,11 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
           )}
           {titleBarShown() ? null : <SearchControl {...searchProps} />}
           <View
-            onPress={refreshing() || (!favorites() && !mine() && !replies() && !channel()) ? undefined : refreshThreads}
+            onPress={refreshing() || (!favorites() && !mine() && !replies() && !messages() && !channel()) ? undefined : refreshThreads}
             accessibilityLabel="Refresh threads"
             style={{ padding: 4, borderRadius: 6 }}
           >
-            <RefreshIcon size={14} enabled={!refreshing() && (favorites() || mine() || replies() || !!channel())} spinning={refreshing()} />
+            <RefreshIcon size={14} enabled={!refreshing() && (favorites() || mine() || replies() || messages() || !!channel())} spinning={refreshing()} />
           </View>
         </View>
         {error() ? <Failure message={error()!.message} onRetry={() => error()!.retry()} /> : null}
@@ -809,11 +886,13 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
           {(item) => (
             <ThreadRow
               item={item}
-              selected={() => thread()?.id === item().id}
+              selected={() => (messages() ? peer() : thread())?.id === item().id}
               avatar={() => {
                 const name = avatarName(item());
                 return name ? avatars()[name] : undefined;
               }}
+              // The favorites list is all favorites, so its rows carry no star.
+              favorite={() => !favorites() && !!props.user() && isFavorite(item().id)}
               onPress={() => openThread(item())}
             />
           )}
@@ -821,17 +900,22 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
         )}
       </View>
 
-      {/* Column 3: the open thread */}
-      <View style={{ flex: 1 }}>
-        {thread() ? (
+      {/* Column 3: the open thread. Under the title bar it extends up into the bar (a negative top margin),
+          so the thread's title sits in the bar's caption area. */}
+      <View style={{ flex: 1, alignSelf: "stretch", marginTop: titleBarShown() ? -titleBar().height : 0 }}>
+        {messages() && peer() && detour().length === 0 ? (
+          <Conversation peer={() => peer()!} onOpenThread={openLinkedThread} />
+        ) : shownThread() ? (
           <Thread
-            fid={thread()!.fid ?? channel()?.id ?? ""}
-            post={thread()!}
-            favorited={favorites()}
+            // A thread from a link has no forum of its own here: its first page names it.
+            fid={detour().length > 0 ? "" : (shownThread()!.fid ?? channel()?.id ?? "")}
+            post={shownThread()!}
             signedIn={!!props.user()}
+            onOpenThread={openLinkedThread}
+            onBack={detour().length > 0 ? backFromLink : undefined}
             onUnfavorited={() => {
               // In the favorites list, the removed thread leaves the list.
-              if (favorites()) posts.set(posts().filter((p) => p.id !== thread()?.id));
+              if (favorites() && detour().length === 0) posts.set(posts().filter((p) => p.id !== thread()?.id));
             }}
           />
         ) : (

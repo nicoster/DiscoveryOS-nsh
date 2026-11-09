@@ -245,6 +245,55 @@ export function parseMyReplies(html: string): Post[] {
   return posts;
 }
 
+/** One private message in a conversation: its sender, when, its HTML body, and the sender's avatar. */
+export type PmMessage = { author: string; at: string; body: string; avatar?: string };
+
+const PM_TIME = /\d{4}-\d{1,2}-\d{1,2} \d{1,2}:\d{2}/;
+
+/**
+ * The correspondents in the private messages (`pm.php?filter=privatepm`): one row per
+ * person, with the time of the latest message. Shaped as thread rows, so the list shows
+ * them the same way; the row's title is the person's name.
+ */
+export function parsePmUsers(html: string): Post[] {
+  const posts: Post[] = [];
+  for (const item of captureGroups(html, "<li[^>]*>.*?</li>")) {
+    const uid = /pm\.php\?uid=(\d+)(?:&amp;|&)filter=privatepm/.exec(item)?.[1];
+    // The name is the link in `cite`; the latest message's time follows it.
+    const name = /<cite><a href="space\.php\?uid=\d+"[^>]*>([^<]+)<\/a><\/cite>/.exec(item)?.[1];
+    const at = PM_TIME.exec(item)?.[0];
+    if (!uid || !name || !at) continue;
+    const decoded = htmlDecode(name).trim();
+    posts.push({ id: uid, title: decoded, author: decoded, at, excerpt: "" });
+  }
+  return posts;
+}
+
+/**
+ * The messages with one correspondent (`pm.php?uid=N`), in the order the page lists them.
+ * Each message is an `li`: its sender in `cite`, the time after it, the text in
+ * `div.summary`, and the sender's avatar image. Date headings are `li`s without a sender.
+ */
+export function parsePmConversation(html: string): PmMessage[] {
+  const messages: PmMessage[] = [];
+  for (const item of captureGroups(html, "<li[^>]*>.*?</li>")) {
+    const author = /<cite>([\s\S]*?)<\/cite>/.exec(item)?.[1];
+    const at = PM_TIME.exec(item)?.[0];
+    const summary = /<div class="summary">([\s\S]*?)<\/div>/.exec(item)?.[1];
+    if (!author || !at || summary === undefined) continue;
+    const avatar = /<img src="([^"]+)"/.exec(item)?.[1];
+    messages.push({
+      author: htmlToText(author),
+      at,
+      // Line breaks in the source are layout whitespace; only `<br>` makes a new line.
+      // The body stays HTML, as a thread reply's does, so both views decode it the same way.
+      body: unescapeNumericEntities(summary),
+      avatar: avatar ? htmlDecode(avatar) : undefined,
+    });
+  }
+  return messages;
+}
+
 /** The user page's UID and avatar (`DiscuzAPI.loadUser`). */
 export function parseUser(html: string, name: string): Author | undefined {
   const col = captureGroups(html, '\\(UID: (\\d+)\\).*<div class="avatar"><img src="([^"]+)', true);
@@ -293,6 +342,39 @@ export function mergePage<T extends { id: string }>(
 /** An absolute URL for a path on the forum (`DiscuzAPI`'s relative paths). */
 export function absoluteUrl(path: string, base: string): string {
   return new URL(path, base).href;
+}
+
+/**
+ * The thread a 4d4y link opens: `viewthread.php?tid=` or `forum.php?mod=viewthread&tid=`
+ * on `4d4y.com` or one of its subdomains. Any other link gives `undefined`.
+ */
+export function threadIdFromLink(href: string): string | undefined {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return undefined;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return undefined;
+  if (url.hostname !== "4d4y.com" && !url.hostname.endsWith(".4d4y.com")) return undefined;
+  const isThread =
+    /(^|\/)viewthread\.php$/.test(url.pathname) || (/(^|\/)forum\.php$/.test(url.pathname) && url.searchParams.get("mod") === "viewthread");
+  const tid = url.searchParams.get("tid");
+  if (!isThread || !tid || !/^\d+$/.test(tid)) return undefined;
+  return tid;
+}
+
+/**
+ * A thread page's title and forum (`fid`), as the page names them: the subject
+ * heading, else the page `<title>` without its site suffix.
+ */
+export function parseThreadPageInfo(html: string): { title?: string; fid?: string } {
+  const subject = /<span id="thread_subject">([\s\S]*?)<\/span>/.exec(html)?.[1];
+  const pageTitle = /<title>([\s\S]*?)<\/title>/i.exec(html)?.[1];
+  const fromTitle = pageTitle?.replace(/\s+-\s+[^-]*$/, "");
+  const title = subject ? htmlDecode(subject.replace(/<[^>]*>/g, "")).trim() : fromTitle ? htmlDecode(fromTitle).trim() : undefined;
+  const fid = /forumdisplay\.php\?fid=(\d+)/.exec(html)?.[1];
+  return { title: title || undefined, fid };
 }
 
 /** Drops the empty lines a post starts with (`<br>`, or empty paragraphs and
