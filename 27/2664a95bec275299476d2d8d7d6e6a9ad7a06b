@@ -1,0 +1,321 @@
+DiscoveryOS-nsh/src/discuz/cookies.ts
+  s_fdcd192da4b2c0::t_98feaa58bec0c5 32-35,45,47-48,51-57
+  s_2a985f8fb66579::t_520712490d8af8 64
+  s_2a985f8fb66579::t_303c3d7237ff97 4
+  s_fdcd192da4b2c0::t_55af0eea7fd383 1-3,5-31,36-44,46,49-50,58-63,65-75
+DiscoveryOS-nsh/src/ui/nearEnd.ts
+  s_fdcd192da4b2c0::t_24c438e0c7ca2b 1-5
+DiscoveryOS-nsh/src/discuz/client.ts
+  s_fdcd192da4b2c0::t_51ffdd00ef0baa 4,49-51,89-122
+  s_d13ddd9c9bd2d1::t_0e73cb8cde2062 3
+  s_d13ddd9c9bd2d1::t_7021720be7d177 126-201,203-206,214-217,219-220,226-232,238
+  s_d13ddd9c9bd2d1::t_f8a010320ea14b 202,207-213
+  s_fdcd192da4b2c0::t_e5cd04a03f6c64 13-15,43,45,54,124-125,218,221-225,234-237,239-244
+  s_fdcd192da4b2c0::t_794f07891543f3 1-2,6-12,16-42,44,46-48,52-53,55-88,123,245-254
+  s_d13ddd9c9bd2d1::t_4d54bbc9e14123 5,233
+DiscoveryOS-nsh/src/ui/appearance.ts
+  s_489f0f5360248c::t_3d226bd709da45 58-64
+  s_489f0f5360248c::t_91080b2c1bdaeb 1-57,65-87
+DiscoveryOS-nsh/src/discuz/encoding.test.ts
+  s_fdcd192da4b2c0::t_7749f123d135b8 3,10-17
+  s_fdcd192da4b2c0::t_e2db7015d998ba 1-2,4-9,18
+DiscoveryOS-nsh/src/ui/lastPlace.ts
+  s_12e7edc17d2f98::t_77c3635db19b49 1-27
+DiscoveryOS-nsh/src/discuz/timeAgo.ts
+  s_c726c6d1b48b1a::t_ec524589e90d9a 1-31
+DiscoveryOS-nsh/src/codec.rs
+  s_fdcd192da4b2c0::t_454e8f3dfae375 1-19,21-43,50-51
+  s_fdcd192da4b2c0::t_082ad58992e60c 20,44-49
+DiscoveryOS-nsh/src/discuz/parse.ts
+  s_fdcd192da4b2c0::t_8c9fb6a046bcc9 180-183,191
+  s_fdcd192da4b2c0::t_3c9427d04bb02e 239
+  s_fdcd192da4b2c0::t_0df9b0c52edd06 234,237
+  s_fdcd192da4b2c0::t_a53f80ff9f96a0 48-49,138,145-148
+  s_fdcd192da4b2c0::t_b3060eb82ab0b2 122-130
+  s_fdcd192da4b2c0::t_9af1209b930d5e 217-219,224-225,227,235
+  s_fdcd192da4b2c0::t_070540619560d4 252-254
+  s_fdcd192da4b2c0::t_05f84e1177d546 131-137,139-144,149-152
+  s_fdcd192da4b2c0::t_caa8f97b9371f7 220-223
+  s_fdcd192da4b2c0::t_a0bd81a483636a 153-177
+  s_fdcd192da4b2c0::t_6975f578bbb158 238
+  s_fdcd192da4b2c0::t_e98a2f99cf9b76 229,232
+  s_fdcd192da4b2c0::t_0c3617c3ffe28b 89-121
+  s_fdcd192da4b2c0::t_519424a9c6291c 1-47,50-88
+  s_fdcd192da4b2c0::t_7508e8103420d6 193-198,216,230,250-251
+  s_fdcd192da4b2c0::t_d8c4d5f1f84599 178-179,184-190,192
+  s_c726c6d1b48b1a::t_6764862a711fd7 199-210
+  s_fdcd192da4b2c0::t_1dededabb63866 211-215,226,228,231,233,240-249
+  s_fdcd192da4b2c0::t_e1373555eb6418 236
+DiscoveryOS-nsh/.gitignore
+  s_fdcd192da4b2c0::t_fe1c0c2800df7f 1-2
+DiscoveryOS-nsh/src/debugConsole.ts
+  s_fdcd192da4b2c0::t_8449ebd70f5b7e 1-22
+DiscoveryOS-nsh/src/keychain.rs
+  s_fdcd192da4b2c0::t_0b10ca30c961a0 9-12,14-22,29,33,37,45
+  s_fdcd192da4b2c0::t_fdaf758d0047bd 1-8,13,23-28,30-32,34-36,38-44,46-90
+DiscoveryOS-nsh/src/discuz/encoding.ts
+  s_fdcd192da4b2c0::t_794f07891543f3 5-7,16-20,22-25
+  s_d13ddd9c9bd2d1::t_0b9e1ba65b887c 30-46
+  s_fdcd192da4b2c0::t_e2db7015d998ba 1-4,8,28-29,47-52,64-71
+  s_fdcd192da4b2c0::t_55af0eea7fd383 9,15,26-27
+  s_fdcd192da4b2c0::t_e5cd04a03f6c64 10-14,21,53-63
+DiscoveryOS-nsh/src/discuz/cookies.test.ts
+  s_fdcd192da4b2c0::t_98feaa58bec0c5 1-23
+DiscoveryOS-nsh/App.test.tsx
+  s_fdcd192da4b2c0::t_5b1bbae7eb7eae 1-2,10-11,20-21,23-24,26
+  s_fdcd192da4b2c0::t_fe1c0c2800df7f 3-4,6,27
+  s_2a985f8fb66579::t_a362e52b508743 5,7-9,12-19,22,25
+DiscoveryOS-nsh/src/discuz/timeAgo.test.ts
+  s_c726c6d1b48b1a::t_19a668e9fbfd86 1-19
+DiscoveryOS-nsh/tsconfig.json
+  s_fdcd192da4b2c0::t_fe1c0c2800df7f 1-4
+DiscoveryOS-nsh/Cargo.toml
+  s_fdcd192da4b2c0::t_fe1c0c2800df7f 1-11
+  s_fdcd192da4b2c0::t_454e8f3dfae375 12
+  s_fdcd192da4b2c0::t_fdaf758d0047bd 13-15
+DiscoveryOS-nsh/src/discuz/parse.test.ts
+  s_fdcd192da4b2c0::t_519424a9c6291c 1,3-43
+  s_fdcd192da4b2c0::t_d8c4d5f1f84599 101-102,104
+  s_fdcd192da4b2c0::t_a53f80ff9f96a0 81
+  s_fdcd192da4b2c0::t_e98a2f99cf9b76 110
+  s_fdcd192da4b2c0::t_2b438d854a4454 123-124,128,135
+  s_c726c6d1b48b1a::t_f966968abe67fc 2
+  s_fdcd192da4b2c0::t_a0bd81a483636a 83-100
+  s_fdcd192da4b2c0::t_8c9fb6a046bcc9 103,105-107
+  s_fdcd192da4b2c0::t_0df9b0c52edd06 117-119,121-122
+  s_fdcd192da4b2c0::t_0c3617c3ffe28b 49-66
+  s_fdcd192da4b2c0::t_05f84e1177d546 73-80,82
+  s_fdcd192da4b2c0::t_7508e8103420d6 108-109,111,113,115
+  s_fdcd192da4b2c0::t_e1e95f4166ab2c 125,127
+  s_fdcd192da4b2c0::t_4e86dfed2a695b 136-143
+  s_fdcd192da4b2c0::t_caa8f97b9371f7 144-149,154
+  s_fdcd192da4b2c0::t_1dededabb63866 112,114,120,126,129-134
+  s_fdcd192da4b2c0::t_0fb7736cd8460d 44-48
+  s_fdcd192da4b2c0::t_b3060eb82ab0b2 67-72,116
+  s_fdcd192da4b2c0::t_bb41bfe167f64c 150-153
+DiscoveryOS-nsh/src/discuz/avatarCache.ts
+  s_c726c6d1b48b1a::t_533e6be458e348 5,7-10,12,15,17,20-21,24-25,46,48,52-55
+  s_c726c6d1b48b1a::t_760c993b8e58bd 4
+  s_c726c6d1b48b1a::t_1f61fef0baf670 1-3,6,11,13-14,16,18-19,22-23,26-45,47,49-51
+DiscoveryOS-nsh/src/ui/LoadingBar.tsx
+  s_fdcd192da4b2c0::t_c3dcbd2c1b5d3c 1-3,7-8,11-21
+  s_fdcd192da4b2c0::t_8dc981f4a68fa7 4-6,9-10,22-24
+DiscoveryOS-nsh/src/ui/refresh.svg
+  s_2a985f8fb66579::t_a0c890023bac36 1-4
+DiscoveryOS-nsh/nsh.json
+  s_fdcd192da4b2c0::t_afa826d972a8a8 10-11
+  s_fdcd192da4b2c0::t_e2db7015d998ba 6-9,12-14
+  s_fdcd192da4b2c0::t_b1ccac15e5bc3b 3
+  s_fdcd192da4b2c0::t_fe1c0c2800df7f 1-2,4-5,15
+DiscoveryOS-nsh/src/discuz/forum.ts
+  s_fdcd192da4b2c0::t_519424a9c6291c 1-2,5-12
+  s_fdcd192da4b2c0::t_385ba1010875a3 13-15,40
+  s_fdcd192da4b2c0::t_05f84e1177d546 16-25
+  s_fdcd192da4b2c0::t_a0bd81a483636a 3-4,26-27,36-39
+  s_c726c6d1b48b1a::t_33dbf5fea12596 29-32,34-35
+  s_c726c6d1b48b1a::t_164d278d5b598d 28,33
+DiscoveryOS-nsh/README.md
+  s_fdcd192da4b2c0::t_fe1c0c2800df7f 1-28
+DiscoveryOS-nsh/src/discuz/client.test.ts
+  s_fdcd192da4b2c0::t_510af7598e68ac 1,3-24,50
+  s_d13ddd9c9bd2d1::t_27b87ef784b0a7 2,25-49
+DiscoveryOS-nsh/src/ui/Thread.tsx
+  s_d13ddd9c9bd2d1::t_a77c0123ca9eae 3,13,113-126,128-129,210
+  s_fdcd192da4b2c0::t_b5175652bc742a 4,32-33,71,73-77,148,150-152,158,205-208,212,222-223
+  s_c726c6d1b48b1a::t_1f265fad0c6232 135-136,138-147,149
+  s_fdcd192da4b2c0::t_385ba1010875a3 14,28,31,38,72,159-160,168,177,198-199,201,225-227
+  s_d13ddd9c9bd2d1::t_8a6c0d72cf8cad 34
+  s_c726c6d1b48b1a::t_fdef9caaecdab8 217-218,220
+  s_c726c6d1b48b1a::t_2c249e96d96e3f 178-187
+  s_fdcd192da4b2c0::t_ae89a725d6c7ed 82,86,133-134
+  s_489f0f5360248c::t_a425660e4f0f89 12
+  s_c726c6d1b48b1a::t_22a5a6e5c9267e 189
+  s_d13ddd9c9bd2d1::t_9827b2685bddff 213-214,216
+  s_2a985f8fb66579::t_7ac4beaeafcf64 190-194
+  s_c726c6d1b48b1a::t_b308d23ade6329 196
+  s_2a985f8fb66579::t_bcfd1f5b2799f5 202-203
+  s_c726c6d1b48b1a::t_318b910160bf84 9
+  s_d13ddd9c9bd2d1::t_e14ebdebf16a3b 5
+  s_fdcd192da4b2c0::t_d8c4d5f1f84599 50-51
+  s_fdcd192da4b2c0::t_8dc981f4a68fa7 11,40,57,64,200
+  s_489f0f5360248c::t_cfd06050f49d4b 169
+  s_c726c6d1b48b1a::t_8ab2c1bf549446 162
+  s_c726c6d1b48b1a::t_b9db04b83af0ac 17-25
+  s_c726c6d1b48b1a::t_686f757967d03b 35-37
+  s_2a985f8fb66579::t_7d86bc1b8a6f43 163-167
+  s_fdcd192da4b2c0::t_8c9fb6a046bcc9 49
+  s_c726c6d1b48b1a::t_fde89739e128a8 204,211,215,219,221
+  s_c726c6d1b48b1a::t_9826901c0a7311 6
+  s_2a985f8fb66579::t_41246c5d41e7b1 224
+  s_d13ddd9c9bd2d1::t_b2d5e72d50fada 110-112
+  s_fdcd192da4b2c0::t_b12f283f79dd52 83-85,137
+  s_fdcd192da4b2c0::t_24c438e0c7ca2b 10,39,41,54-56,58,62-63,170-176
+  s_c726c6d1b48b1a::t_e64fb3dce95cde 161
+  s_fdcd192da4b2c0::t_2d497286a5105b 1-2,15-16,29-30,42-44,52-53,59-61,65-70,78-81,87-88,130-132,153-157,195,197,209
+  s_d13ddd9c9bd2d1::t_248e505f56aadf 89-109,127
+  s_2a985f8fb66579::t_a74403d03a1d03 26-27
+  s_c726c6d1b48b1a::t_d030beba15be62 188
+  s_fdcd192da4b2c0::t_8449ebd70f5b7e 8,45-48
+  s_2a985f8fb66579::t_47be7c95d165c6 7
+DiscoveryOS-nsh/src/ui/Forum.tsx
+  s_c726c6d1b48b1a::t_01a19b5248fcc3 86-88,90
+  s_489f0f5360248c::t_be51aa0a5efc5a 297
+  s_2a985f8fb66579::t_52d0e78587d01b 23-25
+  s_2a985f8fb66579::t_d8905bfa5d7f3d 160-162,173
+  s_fdcd192da4b2c0::t_070540619560d4 34-36,64-65,67-68,73-77,96
+  s_2a985f8fb66579::t_61b793c2762c68 220
+  s_c726c6d1b48b1a::t_0b4b596c3f3393 109-112,114-116,119-120,128-129,132
+  s_c726c6d1b48b1a::t_f7bfd15d475fc9 7
+  s_2a985f8fb66579::t_9c839989d711b2 243-261
+  s_2a985f8fb66579::t_ea88f0f2e0729f 268-269
+  s_fdcd192da4b2c0::t_24c438e0c7ca2b 9,78,85,102-103,106-108,113,117,284-290
+  s_489f0f5360248c::t_3f5aea988ab6de 307
+  s_c726c6d1b48b1a::t_1709d1b0e74ebb 5
+  s_c726c6d1b48b1a::t_39d24ae0f5f27b 13
+  s_fdcd192da4b2c0::t_ccb0e58fd444b8 1-2,126,137,139,146-149,214-215,228-233,235-236,242,264-266,277,291-296,298-302,305-306,310,318,320,322-326,337-338,340-342
+  s_c726c6d1b48b1a::t_dae5b3f634bf51 279-283
+  s_c726c6d1b48b1a::t_c87d4287ca9e5f 327-330,332-336
+  s_489f0f5360248c::t_5fdda4a2e7311d 14
+  s_fdcd192da4b2c0::t_385ba1010875a3 8,29
+  s_c726c6d1b48b1a::t_de6e6b72b96a69 17-22
+  s_d0b274e2e3c0dd::t_ab3ee211d32776 262
+  s_fdcd192da4b2c0::t_8c9fb6a046bcc9 93
+  s_2a985f8fb66579::t_c27c004955ad40 217-218,227
+  s_c726c6d1b48b1a::t_15fc1db7bc3818 70-72
+  s_489f0f5360248c::t_c0d24ad84558ff 278
+  s_c726c6d1b48b1a::t_0d4460da2c8c1b 304
+  s_12e7edc17d2f98::t_16d541789660c9 133,145,150
+  s_2a985f8fb66579::t_8a93927b82cac0 189
+  s_2a985f8fb66579::t_23087e803c891b 156-159,165,167,171-172,174-177
+  s_fdcd192da4b2c0::t_ae89a725d6c7ed 121-122
+  s_fdcd192da4b2c0::t_4b17f9448655de 319
+  s_2a985f8fb66579::t_a65277c6be80ce 270-276
+  s_c726c6d1b48b1a::t_8370dafcef2110 6
+  s_fdcd192da4b2c0::t_8dc981f4a68fa7 10,79,104,118
+  s_c726c6d1b48b1a::t_67ac37269824cd 11
+  s_2a985f8fb66579::t_04d3b03b892c35 187-188,194-195,202-206
+  s_c726c6d1b48b1a::t_933a9439013a9b 69
+  s_489f0f5360248c::t_f5cb5097764fdb 308,339
+  s_2a985f8fb66579::t_e3190974aa7d55 4
+  s_2a985f8fb66579::t_48a1a48d2b76ff 219,221-224
+  s_fdcd192da4b2c0::t_637460af822599 3,28,31-32,91,97-98,123-125,127,130,141,144,316
+  s_fdcd192da4b2c0::t_0fb7736cd8460d 16,26-27,30,33,37,134-136,138,140,142,151-152,212-213,241,317,343-345
+  s_489f0f5360248c::t_9384a5487dcc0e 234
+  s_2a985f8fb66579::t_e221d97fdbc399 153-155,163-164
+  s_c726c6d1b48b1a::t_7e3341dac6d3dc 263
+  s_c726c6d1b48b1a::t_d16411234c9176 80-84,89,92,99-101,105
+  s_c726c6d1b48b1a::t_d539fa27e96d75 66
+  s_c726c6d1b48b1a::t_8f8f83532ce48f 321
+  s_2a985f8fb66579::t_f418572ab6588e 166,178-185,225-226
+  s_12e7edc17d2f98::t_7185db2dd560d1 15
+  s_2a985f8fb66579::t_68fa04e533484f 196-197
+  s_2a985f8fb66579::t_97c2d751243903 12
+  s_12e7edc17d2f98::t_3dbab97faba0f9 38-63
+  s_2a985f8fb66579::t_5a33bc03954a58 186,191-193,198-201,207,210-211
+  s_c726c6d1b48b1a::t_9062c499805f2f 303
+  s_12e7edc17d2f98::t_3d320ff5e98fb2 309,311-315
+  s_c726c6d1b48b1a::t_84d5b78a6889ae 237,239-240
+  s_489f0f5360248c::t_15cad02bb57e9d 216,267
+  s_fdcd192da4b2c0::t_d8c4d5f1f84599 94-95
+  s_12e7edc17d2f98::t_352da0af46fcb0 168-170
+  s_2a985f8fb66579::t_97519613bacfce 190,208-209
+  s_c726c6d1b48b1a::t_5dd4a156bd6c96 131,143
+  s_2a985f8fb66579::t_cf633a3ea71d47 331
+  s_c726c6d1b48b1a::t_a8e9d6af961ba9 238
+DiscoveryOS-nsh/src/ui/icons.tsx
+  s_c726c6d1b48b1a::t_7e19382045f253 2,4,6-28,30-43,54-79,81-87
+  s_2a985f8fb66579::t_f79ef513953855 44,47-49
+  s_c726c6d1b48b1a::t_f52d83dcd39f88 88-111
+  s_2a985f8fb66579::t_21cfdb276c2a55 45-46,50-53
+  s_c726c6d1b48b1a::t_38a246855d5cb9 1,29,80
+  s_2a985f8fb66579::t_2bf693d72ef283 3,5
+DiscoveryOS-nsh/src/ui/channelIcon.ts
+  s_c726c6d1b48b1a::t_9fed0722ab88d5 1-18,24
+  s_c726c6d1b48b1a::t_5f15169c194cac 19-23,25
+DiscoveryOS-nsh/src/lib.rs
+  s_fdcd192da4b2c0::t_fdaf758d0047bd 9,11,20
+  s_fdcd192da4b2c0::t_fe1c0c2800df7f 1-7,13-18,21-96
+  s_fdcd192da4b2c0::t_454e8f3dfae375 8,10,12,19
+DiscoveryOS-nsh/App.tsx
+  s_489f0f5360248c::t_f702437f921648 215
+  s_c726c6d1b48b1a::t_18d1adc3457a29 14,20-22,26
+  s_c726c6d1b48b1a::t_96022baf386c7d 8
+  s_c726c6d1b48b1a::t_98b7352450b92a 123,126,202-204
+  s_c726c6d1b48b1a::t_26dead89ffac53 1
+  s_fdcd192da4b2c0::t_c1b17f5ade56b0 2-3,5-7,9,13,15-18,23-25,27-30,53-58,63,71-72,74-77,79,81,83-84,86-98,100-105,108-114,116-122,205-212,216-217,222-226
+  s_c726c6d1b48b1a::t_4c1f665c3a1dd1 31-44,46-47,49-52
+  s_fdcd192da4b2c0::t_a45029e20e1efc 4,59,64-70,78,99,115
+  s_2a985f8fb66579::t_5a57691ff68862 10-12,60-62,73,80,82,85,124-125,127-177,179-201,213-214,218-221
+  s_489f0f5360248c::t_cd0f0c96b2e2e5 19
+  s_c726c6d1b48b1a::t_c94f5c4c68c3d4 45,48
+  s_489f0f5360248c::t_0319ff92662494 106-107
+  s_2a985f8fb66579::t_65fb74f5e1d6ee 178
+DiscoveryOS-nsh/src/discuz/credentials.ts
+  s_fdcd192da4b2c0::t_794f07891543f3 1-26
+DiscoveryOS-nsh/Cargo.lock
+  s_2a985f8fb66579::t_53517333fc2e9b 1-1891
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "272664a95bec275299476d2d8d7d6e6a9ad7a06b",
+  "prompts": {},
+  "sessions": {
+    "s_12e7edc17d2f98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "723dae8f-482a-41b9-89cb-6e54d0bd37a2",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_2a985f8fb66579": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0516bb16-824e-43ce-add6-0554315934dc",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_489f0f5360248c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ffcd1a2-417f-4661-a69f-e8f6bfc413b3",
+        "model": "unknown"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_c726c6d1b48b1a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "068aec53-ebad-468f-9602-6f5cd9fe2fad",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_d0b274e2e3c0dd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a9da3f4-01da-463f-8c3a-94886284f775",
+        "model": "unknown"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_d13ddd9c9bd2d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "655290e6-ae32-4657-bad1-2a05d46f5762",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_fdcd192da4b2c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a750ec2a-fcd5-4924-86a3-49adbfaeab6b",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
