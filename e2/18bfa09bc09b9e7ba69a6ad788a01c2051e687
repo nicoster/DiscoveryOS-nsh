@@ -1,0 +1,19 @@
+README.md
+  s_dbced879e4bcb7::t_c743c337a14234 3-53,56-59,62-65,67-69,71,73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e218bfa09bc09b9e7ba69a6ad788a01c2051e687",
+  "prompts": {},
+  "sessions": {
+    "s_dbced879e4bcb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76ca6066-6e5f-4230-be7c-598622c94839",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
