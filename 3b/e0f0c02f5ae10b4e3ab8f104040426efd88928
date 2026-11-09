@@ -1,0 +1,190 @@
+DiscoveryOS-nsh/src/ui/theme-dark.svg
+  s_2bf31aa3ea4c0d::t_00436bb5cdab02 1-3
+DiscoveryOS-nsh/src/ui/theme-system.svg
+  s_2bf31aa3ea4c0d::t_00436bb5cdab02 1-4
+DiscoveryOS-nsh/src/ui/power.svg
+  s_2bf31aa3ea4c0d::t_00436bb5cdab02 1-4
+DiscoveryOS-nsh/src/ui/search.svg
+  s_2bf31aa3ea4c0d::t_00436bb5cdab02 1-4
+DiscoveryOS-nsh/src/ui/TitleBar.tsx
+  s_fa2910fe1a4aec::t_9ebf76f06e444f 68-82
+  s_2bf31aa3ea4c0d::t_9546876d330169 11
+  s_9f3f4c88d9d3dc::t_e24966344d2d18 44-45
+  s_9f3f4c88d9d3dc::t_e30978c24b8412 85
+  s_2bf31aa3ea4c0d::t_088352e35fbf9a 109
+  s_2bf31aa3ea4c0d::t_343b2025ed20b6 1,3-5,7-10,17,31-43,46-48,50-55,57-62,122-134,136-146,149-150,152-154
+  s_9f3f4c88d9d3dc::t_477a3f33a3b0d3 63-64
+  s_fa2910fe1a4aec::t_5a2218531f24fa 92-93,101
+  s_2bf31aa3ea4c0d::t_d238d13b517e31 49,56,96-97,111,148
+  s_9f3f4c88d9d3dc::t_7f3da4396e54e6 6
+  s_9f3f4c88d9d3dc::t_ddca26ba90704c 114-119
+  s_2bf31aa3ea4c0d::t_98a801320b35a6 135,147,151
+  s_2bf31aa3ea4c0d::t_cca8c0cfde0eee 65-67,83-84,86-90,98-100,102-108,110,112-113,120-121
+  s_2bf31aa3ea4c0d::t_50062b202c5c55 91,94-95
+  s_2bf31aa3ea4c0d::t_94bfeffea888a6 15
+  s_2bf31aa3ea4c0d::t_170b4a2f889420 2,12-14,16
+  s_fa2910fe1a4aec::t_abce024b8aa76b 18-30
+DiscoveryOS-nsh/src/discuz/forum.ts
+  s_1f6e6082843be3::t_433787541bbede 52-54
+  s_1f6e6082843be3::t_3884c05e7851ff 3,50,55-59
+  s_b74678dd72dad8::t_a8901e1bfaa4cd 12-14,41
+  s_2bf31aa3ea4c0d::t_9c2979ad943a75 2,15-40
+  s_b74678dd72dad8::t_20181dce70e54b 5
+  s_1f6e6082843be3::t_4bee55dee438bf 51
+DiscoveryOS-nsh/src/discuz/parse.ts
+  s_1f6e6082843be3::t_237cdfab0aa50b 221-224,228,232,235-240
+  s_1f6e6082843be3::t_d874a3a3244363 163,196-212,214,244-247
+  s_1f6e6082843be3::t_e5c43b37635014 151,157-162
+  s_1f6e6082843be3::t_93c0d1bc18c4a8 213
+  s_1f6e6082843be3::t_d59d2265d7b305 44-45
+  s_1f6e6082843be3::t_3884c05e7851ff 51-52,215-220,225-227,229-231,233-234
+  s_2bf31aa3ea4c0d::t_4bc4f06221fe8e 93-123
+  s_b74678dd72dad8::t_736acc05abcfb4 284-290
+  s_1f6e6082843be3::t_8ec85fe6f64d4d 241-243
+  s_1f6e6082843be3::t_34e0f3569eb951 164
+DiscoveryOS-nsh/src/discuz/parse.test.ts
+  s_1f6e6082843be3::t_aa229b4bcbd824 85-93
+  s_1f6e6082843be3::t_237cdfab0aa50b 97-110,112
+  s_1f6e6082843be3::t_8ec85fe6f64d4d 111
+  s_b74678dd72dad8::t_65facbd5eb3b86 118,145-149,244
+  s_1f6e6082843be3::t_e5c43b37635014 2,114-117
+  s_2bf31aa3ea4c0d::t_4d135ef83af05e 113,195-243
+  s_1f6e6082843be3::t_3884c05e7851ff 94-96
+  s_1f6e6082843be3::t_5adb43787ba087 119
+DiscoveryOS-nsh/src/ui/icons.tsx
+  s_2bf31aa3ea4c0d::t_9546876d330169 7-34
+DiscoveryOS-nsh/App.tsx
+  s_2bf31aa3ea4c0d::t_2e9b78cccc6934 9
+  s_2bf31aa3ea4c0d::t_170b4a2f889420 10,231
+  s_2bf31aa3ea4c0d::t_9546876d330169 36,50,150-151
+DiscoveryOS-nsh/src/ui/sidebar.svg
+  s_b74678dd72dad8::t_6a515b022f053d 2-4
+  s_2bf31aa3ea4c0d::t_00436bb5cdab02 1
+DiscoveryOS-nsh/src/ui/Thread.tsx
+  s_29a0fb24dd1dd0::t_bfaff47d2406c5 3
+  s_a0573744418737::t_f98f2c9d321bc2 177-178
+  s_a0573744418737::t_7e62f62867523d 14
+  s_29a0fb24dd1dd0::t_d3d683b6065691 188-190,193-196,198,202-203,209-210,212,217-220,223-224
+DiscoveryOS-nsh/src/ui/Forum.tsx
+  s_5f4e9ccffed928::t_f22c9629288f8a 423,602,614,631,633-634
+  s_5f4e9ccffed928::t_229fa833d6e8b7 183-184,594-595,606
+  s_fa2910fe1a4aec::t_dc9afd4bec1c68 488-490,497-501
+  s_a0573744418737::t_bfd358790d38fa 649-650
+  s_5f4e9ccffed928::t_2c6c24d3ed61e9 48-49,51-52,57-60,63-72,74-100,104,107-109,117-118,134-138,142-148
+  s_29a0fb24dd1dd0::t_f52134d46e63ba 791-793,796-807,809,811-812,814,817,819-820
+  s_5f4e9ccffed928::t_9b1ad65814c1f9 681
+  s_5f4e9ccffed928::t_8932885ab7a064 4,180-181,640-641,687-689
+  s_5f4e9ccffed928::t_2c9fd14636c2ff 111
+  s_5f4e9ccffed928::t_dfecfc27821247 174-175,177,185-201,204-207
+  s_5f4e9ccffed928::t_7d44753249cc99 682
+  s_5f4e9ccffed928::t_2eb42f91f28080 27-33
+  s_2bf31aa3ea4c0d::t_a7eaeef2e3fcbc 46,169-173,346-347,387-388,427-428,445-465,470-479,539-540,556-559,769,772,783-785
+  s_1f6e6082843be3::t_b2978af8838bcf 5,44,158-159,241,249,359-362,392,405,409-412,414-422,431,468-469,542,566,775,779
+  s_5f4e9ccffed928::t_fecbb2c12d251f 636
+  s_5f4e9ccffed928::t_6c19641d8fc2c1 176
+  s_fa2910fe1a4aec::t_3656d8d1152e72 53-54
+  s_5f4e9ccffed928::t_ed5f83206f62b7 113-114,116,119
+  s_5f4e9ccffed928::t_16d81b51ba32b4 389
+  s_fa2910fe1a4aec::t_abb2743e0c06fd 139-141
+  s_9f3f4c88d9d3dc::t_137090e388a025 486-487
+  s_5f4e9ccffed928::t_fec13dc4bc6f85 433-434
+  s_5f4e9ccffed928::t_05f98591dfa25b 616-630
+  s_5f4e9ccffed928::t_91390bc279d4c5 703-706,708-709,713,716-723,726-727,731,734-741,744-745,749,753,756-757
+  s_9f3f4c88d9d3dc::t_6384fe8267023e 491-496
+  s_9f3f4c88d9d3dc::t_26a58121411808 771
+  s_5f4e9ccffed928::t_8ce056e3f45e78 61-62,105-106,112,122-133
+  s_9f3f4c88d9d3dc::t_84ebdc661fa897 305-309
+  s_1f6e6082843be3::t_e51cae83109616 43,156-157,355-358,391,399,401-404,406-408,430,466-467,541,565
+  s_5f4e9ccffed928::t_236e4e4b5611a0 50,55-56,73,182,426,584-585,587,596,599-601,615,639,642-644,686,690-698,700
+  s_9f3f4c88d9d3dc::t_4ee6e3e316130e 504-507
+  s_fa2910fe1a4aec::t_94dbaa5197452a 101-103
+  s_5f4e9ccffed928::t_0edcfda5d1485a 178-179,202-203,386,400,413,586,588-593,597-598,603-605,607-613,632,683-685,699,701-702
+  s_5f4e9ccffed928::t_28dc334bb92484 115,120-121
+  s_5f4e9ccffed928::t_196a0291252126 110
+  s_fa2910fe1a4aec::t_e7f598ac64c772 19
+  s_2bf31aa3ea4c0d::t_343b2025ed20b6 480-485,502-503,637-638,669,770,773
+  s_5f4e9ccffed928::t_c3adfbb23d62f1 424
+  s_9f3f4c88d9d3dc::t_0fac1c416d1312 47,843
+DiscoveryOS-nsh/src/ui/ThreadRow.tsx
+  s_fa2910fe1a4aec::t_04781c0aa24c6b 3
+  s_fa2910fe1a4aec::t_5943b76b8cd3ed 19-21,25-30
+  s_1f6e6082843be3::t_524962efee58e3 47-52,54-56,58
+  s_fa2910fe1a4aec::t_1c3e98a3170bb7 40-44
+  s_1f6e6082843be3::t_888fdd4607a6b4 59-61,63,66
+  s_29a0fb24dd1dd0::t_66f53bc726f6c9 1-2,9-11,14,23-24,31-39,45-46,53
+  s_fa2910fe1a4aec::t_8dcbfc1e7b8da7 4
+DiscoveryOS-nsh/src/ui/theme-light.svg
+  s_2bf31aa3ea4c0d::t_00436bb5cdab02 1-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3be0f0c02f5ae10b4e3ab8f104040426efd88928",
+  "prompts": {},
+  "sessions": {
+    "s_1f6e6082843be3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17126791-fc08-4387-bbda-b24756ee3277",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_29a0fb24dd1dd0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3250fd7b-a90e-4389-8e71-3c11408c99ac",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_2bf31aa3ea4c0d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4842d52-3dff-469a-a4c3-2b2212a04c94",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_5f4e9ccffed928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7c1608e-6035-4b3f-956b-830e2057c098",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_9f3f4c88d9d3dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26f44b83-527e-454c-b04a-b01f444410fa",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_a0573744418737": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8831ec7d-aea8-48c5-9ae5-b06f9dc5a66e",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_b74678dd72dad8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bae335a7-528b-4da9-8ac4-623d7af5961c",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_fa2910fe1a4aec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0e0e678-3237-4d0a-b517-f0f6e7614121",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
