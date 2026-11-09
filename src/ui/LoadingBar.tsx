@@ -1,24 +1,21 @@
-// The "loading more" indicator at the end of a list: three dots that take turns
-// to light while a page loads. Mounted only while loading, so its timer runs
-// only then. nsh has no public spinner component, so this is built from Views.
-import { cleanup, signal, View } from "nsh";
+// The "loading more" indicator at the end of a list: the refresh arrow, turning while a page
+// loads, the same glyph and spin as the refresh buttons. Mounted only while loading, so the
+// turn stops at once when the page is in (unlike the refresh arrow, it does not finish its
+// turn). Still when the user asked for less motion.
+import { cleanup, createMotion, Image, View } from "nsh";
+import refreshSvg from "./refresh.svg";
+
+const SIZE = 16;
 
 export function LoadingBar() {
-  const phase = signal(0);
-  const timer = setInterval(() => phase.set((phase() + 1) % 3), 300);
-  cleanup(() => clearInterval(timer));
+  const motion = createMotion();
+  void motion.play("spin", { duration: 900, iterations: "infinite", easing: "linear" });
+  cleanup(() => motion.stop());
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 16 }}>
-      {[0, 1, 2].map((i) => (
-        <View
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: 4,
-            backgroundColor: phase() === i ? "#0969da" : "#d0d7de",
-          }}
-        />
-      ))}
+    <View style={{ alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <View accessibilityLabel="Loading" style={{ width: SIZE, height: SIZE, ...motion.style }}>
+        <Image src={refreshSvg} style={{ width: SIZE, height: SIZE }} />
+      </View>
     </View>
   );
 }

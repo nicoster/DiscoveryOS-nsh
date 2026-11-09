@@ -5,6 +5,7 @@ import { loadUser } from "./src/discuz/forum";
 import { clearCredentials, loadCredentials, saveCredentials } from "./src/discuz/credentials";
 import { hasSavedCookies } from "./src/discuz/cookies";
 import { Forum } from "./src/ui/Forum";
+import { Toaster } from "./src/ui/toast";
 import { appearanceMode, appearanceName, cycleAppearance, palette, restoreAppearance, type AppearanceMode } from "./src/ui/appearance";
 
 // Port of `LoginView` (`Views/MainView.swift`) and `CurrentUserStore`: the forum is
@@ -123,10 +124,11 @@ function App() {
   // The account row and its controls sit at the bottom of the channel column,
   // as the Claude Code sidebar keeps its account at the bottom left. Signed out,
   // the row is a blank avatar that opens the sign-in dialog.
-  const accountFooter: JSX.Element = (
+  // `compact` is the channel rail's width: the avatar, theme and sign-out stack in a column.
+  const accountFooter = (compact: boolean): JSX.Element => (
     <View style={{ borderTopWidth: 1, borderColor: palette().border }}>
-      {error() ? <Text style={{ fontSize: 12, color: palette().danger, padding: 8 }}>{error()}</Text> : null}
-      <View style={{ padding: 10, flexDirection: "row", alignItems: "center", gap: 8 }}>
+      {!compact && error() ? <Text style={{ fontSize: 12, color: palette().danger, padding: 8 }}>{error()}</Text> : null}
+      <View style={{ padding: compact ? 6 : 10, flexDirection: compact ? "column" : "row", alignItems: "center", gap: 8 }}>
         {user() ? (
           avatar() ? <Image src={avatar()!} style={{ width: 24, height: 24, borderRadius: 12 }} /> : null
         ) : (
@@ -143,7 +145,7 @@ function App() {
             }}
           />
         )}
-        <Text style={{ fontSize: 13, color: palette().text, flex: 1 }}>{user() ?? ""}</Text>
+        {compact ? null : <Text style={{ fontSize: 13, color: palette().text, flex: 1 }}>{user() ?? ""}</Text>}
         <IconButton label={THEME_ICON[appearanceMode()]} title={`Theme: ${appearanceName(appearanceMode())}`} onPress={cycleAppearance} />
         {user() ? <IconButton label="⏻" title="Sign Out" disabled={busy()} onPress={signOut} /> : null}
       </View>
@@ -216,9 +218,11 @@ function App() {
       }}
     >
       <View style={{ flex: 1, alignSelf: "stretch" }}>
-        <Forum user={user} footer={accountFooter} />
+        <Forum user={user} footer={(compact) => accountFooter(compact)} />
       </View>
       {dialogOpen() ? signInDialog : null}
+      <Toaster />
+
     </View>
   );
 }

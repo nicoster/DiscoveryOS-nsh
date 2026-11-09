@@ -9,6 +9,8 @@ import { dbg } from "../debugConsole";
 import { timeAgo } from "../discuz/timeAgo";
 import { nearEnd } from "./nearEnd";
 import { LoadingBar } from "./LoadingBar";
+import { Failure } from "./Failure";
+import { notify } from "./toast";
 import { palette } from "./appearance";
 import { BubbleIcon, PlaneIcon, StarIcon } from "./icons";
 
@@ -28,7 +30,10 @@ export function Thread(props: { fid: string; post: Post; favorited?: boolean; si
   const replies = signal<Reply[]>([]);
   const page = signal(1);
   const more = signal(true);
+  // Messages for actions that failed (a reply, a picture, favorites): one plain line each.
   const error = signal<string | null>(null);
+  // The page whose load failed, so Retry asks for that page again.
+  const failedPage = signal<number | null>(null);
   const draft = signal("");
   const sending = signal(false);
   const uploading = signal(false);
@@ -40,6 +45,7 @@ export function Thread(props: { fid: string; post: Post; favorited?: boolean; si
   const loadingMoreShown = signal(false);
 
   function fetchPage(n: number) {
+    failedPage.set(null);
     loadReplies(props.post.id, n)
       .then((list) => {
         for (const r of list) {
@@ -51,7 +57,10 @@ export function Thread(props: { fid: string; post: Post; favorited?: boolean; si
         more.set(merged.more);
         page.set(n);
       })
-      .catch((e) => error.set(`Could not load replies: ${e}`))
+      .catch((e) => {
+        dbg("replies failed", props.post.id, "page", n, String(e));
+        failedPage.set(n);
+      })
       .finally(() => {
         loadingMore = false;
         loadingMoreShown.set(false);
@@ -75,12 +84,14 @@ export function Thread(props: { fid: string; post: Post; favorited?: boolean; si
     error.set(null);
     try {
       await postReply(props.fid, props.post.id, draft());
+      notify("reply", "Reply posted.");
       await setDraft("");
       replies.set([]);
       more.set(true);
       fetchPage(1);
     } catch (e) {
-      error.set(`Could not post: ${e}`);
+      dbg("post failed", props.post.id, String(e));
+      error.set("Couldn't send your reply. Try again.");
     } finally {
       sending.set(false);
     }
@@ -101,7 +112,8 @@ export function Thread(props: { fid: string; post: Post; favorited?: boolean; si
           const tag = `[attachimg]${await uploadImage(props.fid, props.post.id, file)}[/attachimg]`;
           await setDraft(draft() ? `${draft()}\n${tag}` : tag);
         } catch (e) {
-          error.set(`Could not upload ${file.name}: ${e}`);
+          dbg("upload failed", file.name, String(e));
+          error.set(`Couldn't upload ${file.name}. Try again.`);
         } finally {
           pendingUploads -= 1;
           uploading.set(pendingUploads > 0);
@@ -121,7 +133,8 @@ export function Thread(props: { fid: string; post: Post; favorited?: boolean; si
         const blob = await fetch(uri).then((r) => r.blob());
         files.push(new File([blob], name, { type: blob.type || "image/jpeg" }));
       } catch (err) {
-        error.set(`Could not read ${name}: ${err}`);
+        dbg("read failed", name, String(err));
+        error.set(`Couldn't read ${name}.`);
       }
     }
     attachFiles(files);
@@ -138,15 +151,18 @@ export function Thread(props: { fid: string; post: Post; favorited?: boolean; si
       if (saved() === true) {
         if (await removeBookmark(props.post.id)) {
           saved.set(false);
+          notify("favorite", "Removed from favorites.");
           props.onUnfavorited?.();
         } else {
-          error.set("Could not remove from favorites");
+          error.set("Couldn't remove from favorites. Try again.");
         }
       } else {
         saved.set(await bookmarkPost(props.post.id));
+        if (saved() === true) notify("favorite", "Added to favorites.");
       }
     } catch (e) {
-      error.set(`Could not change favorites: ${e}`);
+      dbg("favorite failed", props.post.id, String(e));
+      error.set("Couldn't update favorites. Try again.");
     }
   }
 
@@ -167,6 +183,7 @@ export function Thread(props: { fid: string; post: Post; favorited?: boolean; si
         ) : null}
       </View>
       {error() ? <Text style={{ fontSize: 13, color: palette().danger, padding: 12 }}>{error()}</Text> : null}
+      {failedPage() !== null ? <Failure message="Couldn't load replies." onRetry={() => fetchPage(failedPage()!)} /> : null}
       <Scroll
         style={{ flex: 1 }}
         contentStyle={{ padding: 12, gap: 12 }}

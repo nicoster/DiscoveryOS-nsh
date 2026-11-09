@@ -1,8 +1,14 @@
 // Thin line icons drawn with a Canvas, in the muted text color of the theme: a star
 // (outline, or filled when saved) and a speech bubble (outline).
-import { Canvas, Image } from "nsh";
+import { Canvas, cleanup, createMotion, effect, Image, signal, View } from "nsh";
 import { palette } from "./appearance";
 import refreshSvg from "./refresh.svg";
+import sidebarSvg from "./sidebar.svg";
+
+/** The sidebar toggle: a panel with its left column, in `sidebar.svg`. */
+export function SidebarIcon(props: { size: number }) {
+  return <Image src={sidebarSvg} style={{ width: props.size, height: props.size }} />;
+}
 
 const LINE = 1.25;
 
@@ -41,13 +47,53 @@ export function StarIcon(props: { size: number; filled?: boolean }) {
   );
 }
 
-/** A clockwise refresh arrow, drawn in `refresh.svg`; dimmed when `enabled` is false. */
-export function RefreshIcon(props: { size: number; enabled?: boolean }) {
+/** A clockwise refresh arrow, drawn in `refresh.svg`; dimmed when `enabled` is false.
+ * `spinning` turns it round and round while work is under way. When `spinning` ends, the
+ * arrow finishes the turn it is in, then stops. Components run once, so the switch happens
+ * inside JSX, not by an early return. */
+export function RefreshIcon(props: { size: number; enabled?: boolean; spinning?: boolean }) {
+  // Whether the arrow is still turning: set by `spinning`, cleared once a turn ends with it off.
+  const turning = signal(!!props.spinning);
+  effect(() => {
+    if (props.spinning) turning.set(true);
+  });
   return (
-    <Image
-      src={refreshSvg}
-      style={{ width: props.size, height: props.size, opacity: props.enabled === false ? 0.4 : 1 }}
-    />
+    <>
+      {turning() ? (
+        <SpinningRefresh size={props.size} spinning={() => !!props.spinning} onIdle={() => turning.set(false)} />
+      ) : (
+        <Image
+          src={refreshSvg}
+          style={{ width: props.size, height: props.size, opacity: props.enabled === false ? 0.4 : 1 }}
+        />
+      )}
+    </>
+  );
+}
+
+// The same glyph turning on its own, as Spotish's spinner does (a linear spin, 900 ms a turn).
+// It plays one whole turn at a time, so stopping lands on a full turn: after each turn it
+// checks `spinning` again, and calls `onIdle` once that is off. Still when the user asked
+// for less motion (the motion then lands where it ends).
+function SpinningRefresh(props: { size: number; spinning: () => boolean; onIdle: () => void }) {
+  const motion = createMotion();
+  let disposed = false;
+  cleanup(() => {
+    disposed = true;
+    motion.stop();
+  });
+  (async () => {
+    do {
+      await motion.play("spin", { duration: 900, iterations: 1, easing: "linear" });
+    } while (!disposed && props.spinning());
+    if (!disposed) props.onIdle();
+  })().catch(() => {
+    if (!disposed) props.onIdle();
+  });
+  return (
+    <View style={{ width: props.size, height: props.size, ...motion.style }}>
+      <Image src={refreshSvg} style={{ width: props.size, height: props.size }} />
+    </View>
   );
 }
 
