@@ -301,9 +301,23 @@ export function parseUser(html: string, name: string): Author | undefined {
   return { id: col[0], name, avatar: col[1] };
 }
 
-/** A page's HTML as plain text, for quoting (the Swift app quotes Markdown). */
+/**
+ * A page's HTML as plain text, for quoting (the Swift app quotes Markdown). Whitespace
+ * reads as a browser shows it: the line breaks and indentation in the markup are spaces,
+ * `<br>` and block ends are line breaks, and runs of blank lines collapse to one.
+ */
 export function htmlToText(html: string): string {
-  return htmlDecode(html.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "")).trim();
+  const text = html
+    .replace(/\r?\n/g, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/?(p|div|li|tr|h[1-6])\b[^>]*>/gi, "\n")
+    .replace(/<[^>]+>/g, "");
+  return htmlDecode(text)
+    .split("\n")
+    .map((line) => line.replace(/[ \t\u00a0]+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /** `DiscuzAPI.quoted`: a Discuz `[quote]` of a reply, linking back to it. */

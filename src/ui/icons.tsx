@@ -160,11 +160,12 @@ export function BubbleIcon(props: { size: number }) {
   );
 }
 
-/** A paper plane as a thin outline; `enabled` reads true for the text color, false for the muted one. */
+/** A paper plane as a thin outline; `enabled` reads true for the link blue, false for the muted one. */
 export function PlaneIcon(props: { size: number; enabled: () => boolean }) {
   return (
     <Canvas
-      style={{ width: props.size, height: props.size }}
+      // Disabled, the plane is faded further than its muted color alone.
+      style={{ width: props.size, height: props.size, opacity: props.enabled() ? 1 : 0.4 }}
       draw={(cx, size) => {
         const s = size.width;
         cx.beginPath();
@@ -175,7 +176,7 @@ export function PlaneIcon(props: { size: number; enabled: () => boolean }) {
         cx.closePath();
         cx.moveTo(s * 0.4, s * 0.6);
         cx.lineTo(s * 0.9, s * 0.1);
-        cx.strokeStyle = props.enabled() ? palette().text : palette().muted;
+        cx.strokeStyle = props.enabled() ? palette().link : palette().muted;
         cx.lineWidth = LINE;
         cx.lineJoin = "round";
         cx.stroke();

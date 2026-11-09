@@ -6,8 +6,9 @@ import { TextView } from "nsh/base";
 import { loadPmConversation, sendPm } from "../discuz/forum";
 import { absolutize, absoluteUrl, fixImages, threadIdFromLink, trimLeadingBlanks, type PmMessage, type Post } from "../discuz/parse";
 import { HOST } from "../discuz/client";
+import { dbg } from "../debugConsole";
 import { palette } from "./appearance";
-import { Failure } from "./Failure";
+import { notify } from "./toast";
 import { ReplyBox } from "./ReplyBox";
 import { ReplyCard } from "./ReplyCard";
 
@@ -16,7 +17,6 @@ const draftKey = (uid: string) => `pm-draft:${uid}`;
 // `onOpenThread` takes a press on a link to a 4d4y thread, which the thread column then shows.
 export function Conversation(props: { peer: () => Post; onOpenThread?: (tid: string) => void }) {
   const messages = signal<PmMessage[] | null>(null);
-  const error = signal<string | null>(null);
   const draft = signal("");
   const sending = signal(false);
   // Each load gets a number; a reply to an earlier load is dropped when a newer one started.
@@ -25,13 +25,12 @@ export function Conversation(props: { peer: () => Post; onOpenThread?: (tid: str
   function load(uid: string) {
     const token = ++latest;
     messages.set(null);
-    error.set(null);
     loadPmConversation(uid)
       .then((list) => {
         if (token === latest) messages.set(list);
       })
       .catch((e) => {
-        if (token === latest) error.set(String(e instanceof Error ? e.message : e));
+        if (token === latest) notify("pm-load", "Couldn't load messages. Tap to retry.", () => load(uid));
       });
     // The draft saved for this correspondent comes back with the conversation.
     Storage.getItem(draftKey(uid))
@@ -43,7 +42,8 @@ export function Conversation(props: { peer: () => Post; onOpenThread?: (tid: str
 
   async function setDraft(text: string) {
     draft.set(text);
-    await Storage.setItem(draftKey(props.peer().id), text);
+    // A draft that cannot be saved (storage full) is a convenience lost, not a failed action.
+    await Storage.setItem(draftKey(props.peer().id), text).catch((e) => dbg("draft not saved", String(e)));
   }
 
   async function send() {
@@ -51,13 +51,12 @@ export function Conversation(props: { peer: () => Post; onOpenThread?: (tid: str
     const list = messages() ?? [];
     const lastDay = list.length > 0 ? list[list.length - 1].at.split(" ")[0] : "";
     sending.set(true);
-    error.set(null);
     try {
       const fresh = await sendPm(uid, lastDay, draft());
       if (uid === props.peer().id) messages.set(fresh);
       await setDraft("");
     } catch (e) {
-      error.set(`Couldn't send your message. ${e instanceof Error ? e.message : ""}`.trim());
+      notify("pm-send", `Couldn't send your message. ${e instanceof Error ? e.message : ""}`.trim());
     } finally {
       sending.set(false);
     }
@@ -74,8 +73,7 @@ export function Conversation(props: { peer: () => Post; onOpenThread?: (tid: str
       <View style={{ padding: 12, flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
         <Text style={{ fontSize: 22, fontWeight: 600, color: palette().text }}>{`和 ${props.peer().title} 的对话`}</Text>
       </View>
-      {error() ? <Failure message={error()!} onRetry={() => load(props.peer().id)} /> : null}
-      {messages() === null && !error() ? (
+      {messages() === null ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <Text style={{ fontSize: 13, color: palette().muted }}>Loading…</Text>
         </View>

@@ -1,5 +1,5 @@
 import { expect, test } from "nsh/test";
-import { attachedIds, isLoginRequired, parseAttachIds, parseFormHash, parsePageSize, parseReplyBox } from "./client";
+import { attachedIds, isLoginRequired, parseAttachIds, parseFormHash, parsePageSize, parseReplyBox, replyOutcome } from "./client";
 
 // Markup as the Discuz pages send it (`DiscuzAPI.swift` regexes).
 const signedIn = '<div><a href="logging.php?action=logout&amp;formhash=abc123">退出</a></div>';
@@ -41,10 +41,36 @@ test("reads the unused image ids from the attachment list", () => {
   expect(parseAttachIds("<tbody></tbody>")).toEqual([]);
 });
 
+test("finds the ids of files too, as [attach] tags", () => {
+  expect(attachedIds("[attach]6172810[/attach] and [attachimg]6172795[/attachimg]")).toEqual(["6172810", "6172795"]);
+});
+
 test("finds the attachimg ids a reply inserts, once each", () => {
   expect(attachedIds("有意思...[attachimg]6172795[/attachimg]\n[attachimg]6172795[/attachimg][attachimg]6172801[/attachimg]")).toEqual([
     "6172795",
     "6172801",
   ]);
   expect(attachedIds("plain text [img]x[/img]")).toEqual([]);
+});
+
+test("a confirmed reply is posted", () => {
+  expect(replyOutcome("<script>非常感谢，您的回复已经发布，现在将转入主题页</script>")).toEqual({ posted: true });
+});
+
+test("the AJAX flood limit is a refusal with its message", () => {
+  const html = "<root><![CDATA[对不起，您两次发表间隔少于 30 秒，请不要灌水！<script>if(typeof messagehandle_fastpost ==&#39;function&#39;) {messagehandle_fastpost('0', '对不起，您两次发表间隔少于 30 秒，请不要灌水！');}</script>]]></root>";
+  expect(replyOutcome(html)).toEqual({ posted: false, reason: "对不起，您两次发表间隔少于 30 秒，请不要灌水！" });
+});
+
+test("a refused reply reports the page's own message", () => {
+  const html = '<div class="postbox">您的回复过短</div>';
+  expect(replyOutcome(html)).toEqual({ posted: false, reason: "您的回复过短" });
+});
+
+test("a refusal's box is shown as plain text, without its markup", () => {
+  expect(replyOutcome('<div class="postbox"><b>您的回复过短</b><br/></div>')).toEqual({ posted: false, reason: "您的回复过短" });
+});
+
+test("a response that is neither a confirmation nor a refusal is unsure, not an error", () => {
+  expect(replyOutcome("<root><![CDATA[]]></root>")).toEqual({ posted: "unsure" });
 });

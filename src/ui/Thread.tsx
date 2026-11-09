@@ -2,19 +2,23 @@
 // Swift app). The draft is kept per thread in the app's storage.
 import { List, signal, Storage, Text, View, type PasteEvent } from "nsh";
 import { TextView } from "nsh/base";
-import { HOST, postReply, uploadImage } from "../discuz/client";
+import { HOST, postReply, ReplyRefused, uploadAttachment } from "../discuz/client";
 import { bookmarkPost, loadReplyPage, removeBookmark } from "../discuz/forum";
 import { absolutize, absoluteUrl, buildQuote, fixImages, mergePage, threadIdFromLink, trimLeadingBlanks, type Post, type Reply } from "../discuz/parse";
 import { dbg } from "../debugConsole";
 import { timeAgo } from "../discuz/timeAgo";
 import { LoadingBar } from "./LoadingBar";
-import { Failure } from "./Failure";
 import { notify } from "./toast";
 import { palette } from "./appearance";
 import { titleBarShown } from "./TitleBar";
 import { BubbleIcon, StarIcon } from "./icons";
 import { ReplyCard } from "./ReplyCard";
-import { ReplyBox } from "./ReplyBox";
+import { ReplyBox, type Attached } from "./ReplyBox";
+import { canSendReply } from "./replyGate";
+import { pixelSize, type PixelSize } from "./pixelSize";
+
+// A picture by its name or its type; anything else is a file.
+const isPicture = (name: string, type: string) => type.startsWith("image/") || /\.(png|jpe?g|gif|webp|heic)$/i.test(name);
 import { isFavorite, markFavorite } from "./favorites";
 
 const draftKey = (tid: string) => `draft:${tid}`;
@@ -46,12 +50,12 @@ export function Thread(props: {
   const page = signal(1);
   const more = signal(true);
   // Messages for actions that failed (a reply, a picture, favorites): one plain line each.
-  const error = signal<string | null>(null);
   // The page whose load failed, so Retry asks for that page again.
-  const failedPage = signal<number | null>(null);
   const draft = signal("");
   const sending = signal(false);
   const uploading = signal(false);
+  // Pictures pasted into the reply: uploaded already, shown as thumbnails, sent as tags with the reply.
+  const attachments = signal<Attached[]>([]);
   // Whether the thread is in the favorites: the shared list, which the thread lists star from.
   const saved = () => isFavorite(props.post.id);
 
@@ -59,7 +63,6 @@ export function Thread(props: {
   const loadingMoreShown = signal(false);
 
   function fetchPage(n: number) {
-    failedPage.set(null);
     loadReplyPage(props.post.id, n)
       .then(({ title: pageTitle, fid: pageFid, replies: list }) => {
         if (n === 1 && pageTitle) title.set(pageTitle);
@@ -75,7 +78,7 @@ export function Thread(props: {
       })
       .catch((e) => {
         dbg("replies failed", props.post.id, "page", n, String(e));
-        failedPage.set(n);
+        notify("replies-error", "Couldn't load replies. Tap to retry.", () => fetchPage(n));
       })
       .finally(() => {
         loadingMore = false;
@@ -92,30 +95,50 @@ export function Thread(props: {
 
   async function setDraft(text: string) {
     draft.set(text);
-    await Storage.setItem(draftKey(props.post.id), text);
+    // A draft that cannot be saved (storage full) is a convenience lost, not a failed action.
+    await Storage.setItem(draftKey(props.post.id), text).catch((e) => dbg("draft not saved", String(e)));
   }
 
   async function send() {
+    if (!canSendReply(draft()) || sending() || uploading()) return;
+    // The reply's text, then the pictures as their tags.
+    const body = [draft(), ...attachments().map((a) => (a.kind === "image" ? `[attachimg]${a.id}[/attachimg]` : `[attach]${a.id}[/attach]`))].join("\n");
     sending.set(true);
-    error.set(null);
+    dbg("reply send", props.post.id, "fid", fid(), "chars", draft().length);
     try {
-      await postReply(fid(), props.post.id, draft());
+      await postReply(fid(), props.post.id, body);
+      dbg("reply posted", props.post.id);
       notify("reply", "Reply posted.");
+      attachments.set([]);
       await setDraft("");
-      replies.set([]);
-      more.set(true);
-      fetchPage(1);
+      dbg("reply draft cleared", props.post.id);
     } catch (e) {
       dbg("post failed", props.post.id, String(e));
-      error.set("Couldn't send your reply. Try again.");
+      // The forum's own refusal (e.g. the 30-second limit) is shown as it words it.
+      notify("reply-error", e instanceof ReplyRefused ? e.message : "Couldn't send your reply. Try again.");
     } finally {
       sending.set(false);
     }
+    // Reload the replies whether or not the post reported success: the server may have kept
+    // the reply even when its answer was unclear, and the list should show what it holds.
+    dbg("reply refresh", props.post.id, "page 1");
+    replies.set([]);
+    more.set(true);
+    fetchPage(1);
   }
 
-  // Uploads pasted images one at a time, in the order pasted. Each image's tag is
-  // appended to the draft as soon as its upload finishes, so deleting a tag drops
-  // that image from the reply. A paste during an upload waits its turn.
+  // The picture as a data URL, to show it in the reply box.
+  async function previewOf(file: File): Promise<{ preview: string; size: PixelSize | null }> {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return { preview: `data:${file.type || "image/jpeg"};base64,${btoa(binary)}`, size: pixelSize(bytes) };
+  }
+
+  // Uploads pasted files one at a time, in the order pasted. Each one is added to the
+  // attachments as soon as its upload finishes, and it goes with the reply: it has no
+  // remove control. A paste during an upload waits its turn. A picture is uploaded as an
+  // image and shown as a thumbnail; any other file is uploaded as a file and shown by name.
   let pendingUploads = 0;
   let uploadQueue: Promise<void> = Promise.resolve();
   function attachFiles(files: File[]) {
@@ -124,12 +147,14 @@ export function Thread(props: {
       uploading.set(true);
       uploadQueue = uploadQueue.then(async () => {
         try {
-          error.set(null);
-          const tag = `[attachimg]${await uploadImage(fid(), props.post.id, file)}[/attachimg]`;
-          await setDraft(draft() ? `${draft()}\n${tag}` : tag);
+          const picture = isPicture(file.name, file.type);
+          const { preview, size } = picture ? await previewOf(file) : { preview: "", size: null };
+          const kind = picture ? "image" : "file";
+          const id = await uploadAttachment(fid(), props.post.id, file, kind);
+          attachments.set([...attachments(), { id, kind, name: file.name, preview, size }]);
         } catch (e) {
           dbg("upload failed", file.name, String(e));
-          error.set(`Couldn't upload ${file.name}. Try again.`);
+          notify("upload-error", `Couldn't upload ${file.name}. Try again.`);
         } finally {
           pendingUploads -= 1;
           uploading.set(pendingUploads > 0);
@@ -140,20 +165,30 @@ export function Thread(props: {
 
   // A paste's images: the image files (a screenshot, an image copied from a page
   // or app) and the image files copied in a file manager, read from their `file:` URLs.
-  async function onPaste(e: PasteEvent) {
-    const files = e.files.filter((f) => f.type.startsWith("image/"));
-    for (const uri of e.uris) {
+  // Reads the files at these `file:` URLs. A file copied in Finder comes as a file reference
+  // that cannot be read here; a dropped file's own path can.
+  async function readUris(uris: string[]): Promise<File[]> {
+    const files: File[] = [];
+    for (const uri of uris) {
       const name = decodeURIComponent(uri.split("/").pop() ?? "");
-      if (!/\.(png|jpe?g|gif|webp|heic)$/i.test(name)) continue;
+      if (!name) continue;
       try {
         const blob = await fetch(uri).then((r) => r.blob());
-        files.push(new File([blob], name, { type: blob.type || "image/jpeg" }));
+        files.push(new File([blob], name, { type: blob.type || "application/octet-stream" }));
       } catch (err) {
-        dbg("read failed", name, String(err));
-        error.set(`Couldn't read ${name}.`);
+        dbg("read failed", uri, String(err));
+        notify("paste-error", "Can't attach that file. Try dragging it into the box.");
       }
     }
-    attachFiles(files);
+    return files;
+  }
+
+  async function onPaste(e: PasteEvent) {
+    attachFiles([...e.files, ...(await readUris(e.uris))]);
+  }
+
+  async function onFileDrop(uris: string[]) {
+    attachFiles(await readUris(uris));
   }
 
   function quote(r: Reply) {
@@ -170,7 +205,7 @@ export function Thread(props: {
           notify("favorite", "Removed from favorites.");
           props.onUnfavorited?.();
         } else {
-          error.set("Couldn't remove from favorites. Try again.");
+          notify("favorite-error", "Couldn't remove from favorites. Try again.");
         }
       } else if (await bookmarkPost(props.post.id)) {
         markFavorite(props.post.id, true, props.post.lastReplyAt ?? props.post.at);
@@ -178,7 +213,7 @@ export function Thread(props: {
       }
     } catch (e) {
       dbg("favorite failed", props.post.id, String(e));
-      error.set("Couldn't update favorites. Try again.");
+      notify("favorite-error", "Couldn't update favorites. Try again.");
     }
   }
 
@@ -208,8 +243,6 @@ export function Thread(props: {
           </View>
         ) : null}
       </View>
-      {error() ? <Text style={{ fontSize: 13, color: palette().danger, padding: 12 }}>{error()}</Text> : null}
-      {failedPage() !== null ? <Failure message="Couldn't load replies." onRetry={() => fetchPage(failedPage()!)} /> : null}
       {/* A virtualized list: only the replies near the viewport exist, and their views are
           reused as the user scrolls. Each row reads its reply through `item()`. */}
       <List
@@ -248,7 +281,17 @@ export function Thread(props: {
       </List>
       {/* The Send button sits inside the reply box, under the text, at its right edge. Signed out, there is no reply box. */}
       {props.signedIn ? (
-        <ReplyBox draft={() => draft()} onDraft={(text) => setDraft(text)} sending={() => sending()} uploading={() => uploading()} onSend={send} onPaste={onPaste} />
+        <ReplyBox
+          onFileDrop={onFileDrop}
+          draft={() => draft()}
+          onDraft={(text) => setDraft(text)}
+          sending={() => sending()}
+          uploading={() => uploading()}
+          attachments={() => attachments()}
+          canSend={() => canSendReply(draft())}
+          onSend={send}
+          onPaste={onPaste}
+        />
       ) : null}
     </View>
   );

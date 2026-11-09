@@ -1,5 +1,5 @@
 import { expect, test } from "nsh/test";
-import { parsePmConversation, parsePmUsers, absolutize, buildQuote, captureGroups, htmlDecode, parseBookmarks, parseChannels, parseMyReplies, parseMyThreads, unescapeNumericEntities, parsePosts, parseReplies, parseSearchResults, parseUser, mergePage, fixImages, removePercentEncoding, trimLeadingBlanks, threadIdFromLink, parseThreadPageInfo } from "./parse";
+import { htmlToText, parsePmConversation, parsePmUsers, absolutize, buildQuote, captureGroups, htmlDecode, parseBookmarks, parseChannels, parseMyReplies, parseMyThreads, unescapeNumericEntities, parsePosts, parseReplies, parseSearchResults, parseUser, mergePage, fixImages, removePercentEncoding, trimLeadingBlanks, threadIdFromLink, parseThreadPageInfo } from "./parse";
 
 test("captureGroups returns one match's groups, or every whole match", () => {
   expect(captureGroups("a1b", "a(\\d)b", true)).toEqual(["1"]);
@@ -332,4 +332,13 @@ test("reads the thread a 4d4y link opens, and nothing else", () => {
 test("reads a thread page's title and forum", () => {
   expect(parseThreadPageInfo('<span id="thread_subject">A &amp; <b>B</b></span><a href="forumdisplay.php?fid=7">x</a>')).toEqual({ title: "A & B", fid: "7" });
   expect(parseThreadPageInfo("<title>标题 - 4D4Y</title>")).toEqual({ title: "标题", fid: undefined });
+});
+
+test("quoting keeps the words and drops the markup's line breaks and indentation", () => {
+  const html = "<div>\n    我的文集 2\n  </div>\n<br><br>\n  <div>其实就是一个测试.</div>\n";
+  expect(htmlToText(html)).toBe("我的文集 2\n\n其实就是一个测试.");
+});
+
+test("a run of blank lines in a quote is one blank line", () => {
+  expect(htmlToText("一<br><br><br><br>二")).toBe("一\n\n二");
 });

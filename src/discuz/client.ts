@@ -13,6 +13,8 @@ const LOGOUT_LINK = /<a href="logging\.php\?action=logout&amp;formhash=([^"]+)">
 // Discuz's confirmation, and the box it shows when it refuses a post.
 const REPLY_OK = "非常感谢，您的回复已经发布，现在将转入主题页";
 const POSTBOX = /<div class="postbox">([\s\S]*?)<\/div>/;
+// The AJAX refusal: `messagehandle_fastpost('<code>', '<message>')`; the message is the second argument.
+const AJAX_REFUSAL = /messagehandle_fastpost\('[^']*', '([^']*)'\)/;
 const PAGE_SIZE = /name="pppnew" value="(\d+)" checked="checked"/;
 
 export type Session = { name: string; pass: string };
@@ -141,9 +143,9 @@ export function parseAttachIds(html: string): string[] {
   return [...html.matchAll(/insertAttachimgTag\('(\d+)'\)/g)].map((m) => m[1]);
 }
 
-/** The attachment ids a reply's text inserts (`[attachimg]id[/attachimg]`), once each. */
+/** The attachment ids a reply's text inserts (`[attachimg]id[/attachimg]` for a picture, `[attach]id[/attach]` for a file), once each. */
 export function attachedIds(content: string): string[] {
-  return [...new Set([...content.matchAll(/\[attachimg\](\d+)\[\/attachimg\]/g)].map((m) => m[1]))];
+  return [...new Set([...content.matchAll(/\[attach(?:img)?\](\d+)\[\/attach(?:img)?\]/g)].map((m) => m[1]))];
 }
 
 // `STATUSMSG` of Discuz's `post.js`: the upload's failure codes, in English.
@@ -184,7 +186,7 @@ async function unusedImages(posttime: string): Promise<string[]> {
  * (`misc.php?action=swfupload`), and resolves with its attachment id: the new
  * entry in the reply box's list. The reply then names it in `[attachimg]`.
  */
-export async function uploadImage(fid: string, tid: string, file: File): Promise<string> {
+export async function uploadAttachment(fid: string, tid: string, file: File, kind: "image" | "file"): Promise<string> {
   if (!formHash) throw new Error("Not signed in");
   const box = await replyBox(fid, tid);
   postTimes.set(tid, box.posttime);
@@ -194,7 +196,7 @@ export async function uploadImage(fid: string, tid: string, file: File): Promise
   form.append("hash", box.hash);
   form.append("Filedata", file, file.name);
   const { text, setCookies } = await postFormGb(
-    HOST + "misc.php?action=swfupload&operation=upload&simple=1&type=image",
+    HOST + `misc.php?action=swfupload&operation=upload&simple=1&type=${kind}`,
     form,
     cookieHeader(),
   );
@@ -214,6 +216,9 @@ export async function uploadImage(fid: string, tid: string, file: File): Promise
   // Ids grow with each upload, so the newest is the largest.
   return added.reduce((a, b) => (Number(b) > Number(a) ? b : a));
 }
+
+/** A reply the forum refused; its message is the forum's own words, shown to the user. */
+export class ReplyRefused extends Error {}
 
 /** Posts a reply to a thread (`DiscuzAPI.postReply`). Resolves on success;
  * rejects with the page's own message when Discuz refuses it. The image
@@ -239,9 +244,26 @@ export async function postReply(fid: string, tid: string, content: string): Prom
       cookie: "discuz_fastpostrefresh=0",
     },
   );
-  if (!html.includes(REPLY_OK)) {
-    throw new Error(POSTBOX.exec(html)?.[1]?.trim() || "The reply was not posted");
-  }
+  const outcome = replyOutcome(html);
+  dbg("reply response", html.length, "outcome", outcome.posted === false ? `refused: ${outcome.reason}` : outcome.posted);
+  if (outcome.posted === false) throw new ReplyRefused(outcome.reason);
+  if (outcome.posted === "unsure") dbg("reply response unclear, treated as posted", html.length, html.slice(0, 400));
+}
+
+/**
+ * Reads the answer to a reply POST. Discuz confirms a post with `REPLY_OK`. It refuses one
+ * either with its `postbox` box (the full page) or with the AJAX call
+ * `messagehandle_fastpost('<code>', '<message>')`, e.g. the 30-second flood limit. A response
+ * with neither is not a refusal, so the post is treated as made and the thread is refreshed
+ * to show what the server holds; `"unsure"` marks that case for the debug console.
+ */
+export function replyOutcome(html: string): { posted: true | "unsure" } | { posted: false; reason: string } {
+  if (html.includes(REPLY_OK)) return { posted: true };
+  const ajax = AJAX_REFUSAL.exec(html)?.[1];
+  if (ajax) return { posted: false, reason: ajax };
+  const refusal = POSTBOX.exec(html)?.[1];
+  if (refusal) return { posted: false, reason: refusal.replace(/<[^>]*>/g, "").trim() };
+  return { posted: "unsure" };
 }
 
 export function currentUser(): string | null {

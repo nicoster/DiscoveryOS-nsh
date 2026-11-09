@@ -13,8 +13,9 @@ import { channelIcon } from "./channelIcon";
 import { RefreshIcon, SidebarIcon } from "./icons";
 import { palette } from "./appearance";
 import { loadLastPlace, saveLastPlace } from "./lastPlace";
-import { Failure } from "./Failure";
 import { ThreadSkeleton } from "./Skeleton";
+import { Placeholder } from "./Placeholder";
+import { notify } from "./toast";
 import { ThreadRow } from "./ThreadRow";
 import { clearFavoriteIds, isFavorite, reconcileFavorites } from "./favorites";
 import { channelsCollapsed, channelsRailed, FULL_WIDTH, RAIL_BELOW, RAIL_WIDTH, toggleChannelsCollapsed } from "./channelRail";
@@ -171,7 +172,6 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   const posts = signal<Post[]>([]);
   const page = signal(1);
   const more = signal(false);
-  const error = signal<Failed | null>(null);
   // Author avatars for the thread rows, looked up once per author.
   const avatars = signal<Record<string, string>>({});
   const asked = new Set<string>();
@@ -324,25 +324,19 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
         if (request !== listRequest) return;
         dbg("threads failed", key, "page", n, String(e));
         if (n === 1) {
-          error.set({
-            message: "Couldn't load threads.",
-            retry: () => {
-              error.set(null);
-              listLoading.set(true);
-              fetchList(load, 1, key);
-            },
+          notify("list", "Couldn't load threads. Tap to retry.", () => {
+            listLoading.set(true);
+            fetchList(load, 1, key);
           });
           return;
         }
         moreFailures++;
         if (moreFailures >= MORE_FAILURES) {
-          moreError.set({
-            message: "Couldn't load more threads.",
-            retry: () => {
-              moreError.set(null);
-              moreFailures = 0;
-              loadMore();
-            },
+          moreError.set({ message: "Couldn't load more threads.", retry: () => loadMore() });
+          notify("more", "Couldn't load more threads. Tap to retry.", () => {
+            moreError.set(null);
+            moreFailures = 0;
+            loadMore();
           });
         }
       })
@@ -392,7 +386,6 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     posts.set(cached ? cached.items : []);
     more.set(cached ? cached.more : true);
     page.set(1);
-    error.set(null);
     moreFailures = 0;
     moreError.set(null);
     listLoading.set(!cached);
@@ -526,7 +519,6 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     } else {
       posts.set([]);
       more.set(false);
-      error.set(null);
     }
   }
 
@@ -558,6 +550,10 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   const headerTitle = () =>
     searchTerm() !== null ? `包含 “${searchTerm()}” 的帖子` : favorites() ? "Favorites" : mine() ? "My Posts" : replies() ? "My Replies" : messages() ? "Messages" : channel() ? channel()!.title : "Threads";
 
+  // Nothing is open yet (no channel, list or search), so the column has nothing to list.
+  const nothingPicked = () =>
+    searchTerm() === null && !favorites() && !mine() && !replies() && !messages() && !channel();
+
   // True while the channel list is being fetched: the refresh icon dims and ignores presses.
   const channelsLoading = signal(false);
 
@@ -580,7 +576,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
       .catch((e) => {
         if (request !== channelsRequest || quiet) return;
         dbg("channels failed", String(e));
-        error.set({ message: "Couldn't load channels.", retry: () => reloadChannels() });
+        notify("channels", "Couldn't load channels. Tap to retry.", () => reloadChannels());
       })
       .finally(() => {
         if (request === channelsRequest) channelsLoading.set(false);
@@ -856,14 +852,18 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
             <RefreshIcon size={14} enabled={!refreshing() && (favorites() || mine() || replies() || messages() || !!channel())} spinning={refreshing()} />
           </View>
         </View>
-        {error() ? <Failure message={error()!.message} onRetry={() => error()!.retry()} /> : null}
-        {searchTerm() !== null && !listLoading() && !error() && posts().length === 0 ? (
+        {searchTerm() !== null && !listLoading() && posts().length === 0 ? (
           <Text style={{ fontSize: 13, color: palette().muted, textAlign: "center", padding: 16 }}>No threads match “{searchTerm()}”.</Text>
         ) : null}
         {listLoading() ? (
           <Scroll style={{ flex: 1 }}>
             <ThreadSkeleton />
           </Scroll>
+        ) : nothingPicked() ? (
+          <Placeholder
+            title="Choose a channel to see its threads."
+            detail={props.user() ? undefined : "Sign in to see your favorites, posts, replies and messages."}
+          />
         ) : (
         // A virtualized list: only the rows near the viewport exist, and they are reused as
         // the user scrolls. Its end (loading, failure, or "No more threads.") is the footer.
@@ -876,7 +876,6 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
           footer={() => (
             <View>
               {loadingMoreShown() ? <LoadingBar /> : null}
-              {moreError() && !loadingMoreShown() ? <Failure message={moreError()!.message} onRetry={() => moreError()!.retry()} /> : null}
               {!more() && posts().length > 0 && !loadingMoreShown() ? (
                 <Text style={{ fontSize: 13, color: palette().muted, textAlign: "center", padding: 16 }}>No more threads.</Text>
               ) : null}

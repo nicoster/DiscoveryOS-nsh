@@ -5,7 +5,7 @@ import { loadUser } from "./src/discuz/forum";
 import { clearCredentials, loadCredentials, saveCredentials } from "./src/discuz/credentials";
 import { hasSavedCookies } from "./src/discuz/cookies";
 import { Forum } from "./src/ui/Forum";
-import { Toaster } from "./src/ui/toast";
+import { notify, Toaster } from "./src/ui/toast";
 import { PowerIcon, ThemeIcon } from "./src/ui/icons";
 import { hideSystemTitleBar } from "./src/ui/TitleBar";
 import { appearanceMode, appearanceName, cycleAppearance, palette, restoreAppearance, type AppearanceMode } from "./src/ui/appearance";
@@ -57,11 +57,9 @@ function App() {
   const name = signal("");
   const pass = signal("");
   const busy = signal(false);
-  const error = signal<string | null>(null);
   const avatar = signal<string | null>(null);
   // The sign-in dialog, opened from the blank avatar while signed out.
   const dialogOpen = signal(false);
-  const dialogError = signal<string | null>(null);
 
   function showProfile(name: string) {
     user.set(name);
@@ -72,7 +70,6 @@ function App() {
 
   async function signIn() {
     busy.set(true);
-    dialogError.set(null);
     try {
       const ok = await login(name(), pass());
       if (ok) {
@@ -81,10 +78,10 @@ function App() {
         pass.set("");
         dialogOpen.set(false);
       } else {
-        dialogError.set("Sign-in failed");
+        notify("sign-in", "Sign-in failed.");
       }
     } catch (e) {
-      dialogError.set(`Sign-in failed: ${e}`);
+      notify("sign-in", `Sign-in failed: ${e}`);
     } finally {
       busy.set(false);
     }
@@ -116,9 +113,9 @@ function App() {
       .then((state) => {
         if (state === "signed-in") showProfile(currentUser() ?? saved?.name ?? "");
         else if (state === "signed-out" && saved) clearCredentials();
-        else if (state === "offline") error.set("Offline: the saved login is kept");
+        else if (state === "offline") notify("restore", "Offline: the saved login is kept.");
       })
-      .catch((e) => error.set(`Could not restore the login: ${e}`))
+      .catch((e) => notify("restore", `Could not restore the login: ${e}`))
       .finally(() => busy.set(false));
   }
 
@@ -128,7 +125,6 @@ function App() {
   // `compact` is the channel rail's width: the avatar, theme and sign-out stack in a column.
   const accountFooter = (compact: boolean): JSX.Element => (
     <View style={{ borderTopWidth: 1, borderColor: palette().border }}>
-      {!compact && error() ? <Text style={{ fontSize: 12, color: palette().danger, padding: 8 }}>{error()}</Text> : null}
       <View style={{ padding: compact ? 6 : 10, flexDirection: compact ? "column" : "row", alignItems: "center", gap: 8 }}>
         {user() ? (
           avatar() ? <Image src={avatar()!} style={{ width: 24, height: 24, borderRadius: 12 }} /> : null
@@ -192,7 +188,6 @@ function App() {
           onChange={(text: string) => pass.set(text)}
           style={{ height: 28, paddingHorizontal: 8, fontSize: 14 }}
         />
-        {dialogError() ? <Text style={{ fontSize: 13, color: palette().danger }}>{dialogError()}</Text> : null}
         <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
           <Button label="Cancel" onPress={() => dialogOpen.set(false)} />
           <Button
