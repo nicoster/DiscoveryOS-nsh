@@ -1,0 +1,57 @@
+src/ui/pixelSize.ts
+  s_dbced879e4bcb7::t_ef02e5cb6c5d2d 1-41
+src/discuz/client.ts
+  s_dbced879e4bcb7::t_298b2cb25f8fd2 247-262
+  s_dbced879e4bcb7::t_69481121a69760 16-17,146,148,189,199,220-222,263-266
+src/ui/Thread.tsx
+  s_dbced879e4bcb7::t_760780880c02bb 122-125
+  s_dbced879e4bcb7::t_c4dd2ccc2983c1 5,16-21,57-58,81,98-99,103-105,107,109-110,112,114,117-118,126-135,138-141,150-154,157,168-172,174,177,179-180,183-191,208,216,284-294
+src/ui/replyGate.test.ts
+  s_dbced879e4bcb7::t_b96b4d2269f04f 1-21
+src/ui/toast.tsx
+  s_dbced879e4bcb7::t_09d602fe2bed36 1-4,10-11,17,33-37,42-50,56,78
+src/ui/replyGate.ts
+  s_dbced879e4bcb7::t_f6704eef5e6bab 1-8
+src/ui/ReplyBox.tsx
+  s_dbced879e4bcb7::t_8dbb85870f44ea 3-4,12-32,39-41,44-45,47-71,73,81-83,97,100
+  s_dbced879e4bcb7::t_b6ad418e76b3f9 5,8-11,74-80,84-96,98-99,101,106-114,118-119
+src/ui/pixelSize.test.ts
+  s_dbced879e4bcb7::t_b749bf8b8d086c 1-32
+src/ui/Forum.tsx
+  s_dbced879e4bcb7::t_9708c40e1e05c3 553-555
+  s_dbced879e4bcb7::t_72aec087837ea4 862-865
+  s_dbced879e4bcb7::t_7af1f721ca4324 17
+  s_dbced879e4bcb7::t_acb57cdcfce1ea 18,327-329,335-339,556,579,855,866
+src/ui/Placeholder.tsx
+  s_dbced879e4bcb7::t_ed84e3284d2adf 1-13
+App.test.tsx
+  s_dbced879e4bcb7::t_d03c6cc9131d46 20,22
+App.tsx
+  s_dbced879e4bcb7::t_dd9b5314ac8f94 8,81,84,116,118
+src/discuz/client.test.ts
+  s_dbced879e4bcb7::t_0539f520ec9691 2,44-47,55-76
+src/discuz/parse.test.ts
+  s_dbced879e4bcb7::t_fc07a9c70446f3 2,336-344
+src/discuz/parse.ts
+  s_dbced879e4bcb7::t_d06cbdac94a9c6 304-308,310-320
+src/ui/Conversation.tsx
+  s_dbced879e4bcb7::t_3a412c89583130 9,11,33,45-46,59,76
+src/ui/icons.tsx
+  s_dbced879e4bcb7::t_3b4c3be40d431d 163,167-168,179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "09f5c05b9560777b2af53ffd58450b215f1d9dd1",
+  "prompts": {},
+  "sessions": {
+    "s_dbced879e4bcb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76ca6066-6e5f-4230-be7c-598622c94839",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
