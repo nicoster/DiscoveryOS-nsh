@@ -1,37 +1,10 @@
-// The post page's keyboard shortcuts, listed over the thread column when `?` is pressed, as
-// Gmail's list is. A press outside the list, Escape or `?` again closes it.
+// The keyboard shortcuts that work now, listed over the window when `?` is pressed, as Gmail's list
+// is. The rows come from the command catalog (`commands.ts`), so they follow what is shown. A press
+// outside the list, Escape or `?` again closes it.
 import { Overlay, signal, Text, View, type ViewRef } from "nsh";
 import { palette } from "./appearance";
 
 export type Shortcut = { key: string; action: string };
-
-// The keys that work anywhere in the Forum.
-const GENERAL_SHORTCUTS: Shortcut[] = [
-  { key: "/", action: "Search threads" },
-  { key: "c", action: "New thread in this channel" },
-  { key: "n", action: "Next thread" },
-  { key: "p", action: "Previous thread" },
-  { key: "?", action: "Show or hide this list" },
-  { key: "Esc", action: "Close this list, or the search field" },
-];
-
-// The keys of an open thread, as well.
-const POST_SHORTCUTS: Shortcut[] = [
-  { key: "g g", action: "Go to the top of the replies" },
-  { key: "G", action: "Go to the bottom of the replies" },
-  { key: "r", action: "Reply: focus the reply box" },
-  { key: "/", action: "Search threads" },
-  { key: "c", action: "New thread in this channel" },
-  { key: "n", action: "Next thread" },
-  { key: "p", action: "Previous thread" },
-  { key: "f", action: "Add the thread to favorites, or remove it" },
-  { key: "q", action: "Quote the highlighted reply into the reply box" },
-  { key: "?", action: "Show or hide this list" },
-  { key: "Esc", action: "Close this list" },
-];
-
-/** The shortcuts that work now: the post page's, with a thread open, else the Forum's. */
-export const shortcutsFor = (inThread: boolean): Shortcut[] => (inThread ? POST_SHORTCUTS : GENERAL_SHORTCUTS);
 
 export function ShortcutsHelp(props: { keys: Shortcut[]; onClose: () => void }) {
   // The card's place, which the outside-press overlay is anchored to.

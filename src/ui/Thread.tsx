@@ -6,6 +6,7 @@ import { HOST, postReply, ReplyRefused, uploadAttachment } from "../discuz/clien
 import { bookmarkPost, loadReplyPage, removeBookmark } from "../discuz/forum";
 import { absolutize, absoluteUrl, attachmentLinks, buildQuote, fixImages, isAttachmentUrl, mergePage, threadIdFromLink, trimLeadingBlanks, type Post, type Reply } from "../discuz/parse";
 import { downloadAttachment } from "./downloads";
+import { useCommand } from "./commands";
 import { openLink } from "./links";
 import { timeAgo } from "../discuz/timeAgo";
 import { LoadingBar } from "./LoadingBar";
@@ -173,6 +174,8 @@ export function Thread(props: {
   let repliesList: ListRef | undefined;
   let gPending: ReturnType<typeof setTimeout> | undefined;
 
+  const goTop = () => repliesList?.scrollToOffset({ offset: 0, animated: true });
+  // `g g` is a chord of two presses, so it is bound here rather than through the command's keys.
   keymap.bind(
     "g",
     () => {
@@ -180,7 +183,7 @@ export function Thread(props: {
       if (gPending !== undefined) {
         clearTimeout(gPending);
         gPending = undefined;
-        repliesList?.scrollToOffset({ offset: 0, animated: true });
+        goTop();
         return;
       }
       gPending = setTimeout(() => {
@@ -189,38 +192,29 @@ export function Thread(props: {
     },
     { when: "notEditing" },
   );
-  keymap.bind(
-    "r",
-    () => {
-      if (keysOn() && props.signedIn) replyField?.focus();
-    },
-    { when: "notEditing" },
-  );
-  keymap.bind(
-    "f",
-    () => {
-      if (keysOn() && props.signedIn) void toggleFavorite();
-    },
-    { when: "notEditing" },
-  );
-  keymap.bind(
-    "q",
-    () => {
-      if (!keysOn() || !props.signedIn) return;
+  useCommand("thread.top", { enabled: keysOn, run: goTop });
+  useCommand("thread.bottom", {
+    enabled: keysOn,
+    run: () => repliesList?.scrollToEnd({ animated: true }),
+  });
+  useCommand("thread.reply", {
+    enabled: () => keysOn() && !!props.signedIn,
+    run: () => replyField?.focus(),
+  });
+  useCommand("thread.favorite", {
+    enabled: () => keysOn() && !!props.signedIn,
+    checked: saved,
+    run: () => void toggleFavorite(),
+  });
+  useCommand("thread.quote", {
+    enabled: () => keysOn() && !!props.signedIn && replies().some((r) => r.seq === hovered()),
+    run: () => {
       const target = replies().find((r) => r.seq === hovered());
       if (!target) return;
       quote(target);
       replyField?.focus();
     },
-    { when: "notEditing" },
-  );
-  keymap.bind(
-    "shift+g",
-    () => {
-      if (keysOn()) repliesList?.scrollToEnd({ animated: true });
-    },
-    { when: "notEditing" },
-  );
+  });
 
   // Load the first page and the saved draft once.
   fetchPage(1);

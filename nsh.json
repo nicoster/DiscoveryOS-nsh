@@ -2,7 +2,7 @@
   "name": "DiscoveryOS",
   "id": "com.nickr.DiscoveryOS",
   "version": "1.0.3",
-  "build": 4,
+  "build": 5,
   "rust": ".",
   "capabilities": {
     "network": {

@@ -12,6 +12,7 @@ import { hint } from "./src/ui/Hint";
 import { hideSystemTitleBar } from "./src/ui/TitleBar";
 import { availableUpdate, installUpdate, startUpdateCheck } from "./src/update";
 import { appearanceMode, appearanceName, cycleAppearance, palette, restoreAppearance, type AppearanceMode } from "./src/ui/appearance";
+import { installMenu } from "./src/ui/commands";
 
 // Port of `LoginView` (`Views/MainView.swift`) and `CurrentUserStore`: the forum is
 // shown to everyone; the session is restored on launch from the saved cookies, then
@@ -209,6 +210,7 @@ function App() {
   }
 
   restoreAppearance();
+  installMenu();
 
   // Restore the session once, on launch: the saved cookies first, then the
   // saved password. Only a refused password clears what is saved. With nothing

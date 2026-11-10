@@ -1,9 +1,10 @@
 // The signed-in screens in three columns, as the Swift app's split view:
 // channels | a channel's threads (or favorites) | the open thread.
 // Components run once, so the views switch inside JSX, not by early return.
-import { cleanup, createAnimatedValue, createMotion, effect, keymap, Overlay, type ViewRef, LayoutAnimation, List, reduceMotion, Scroll, signal, Text, untracked, View, windowSize, type JSX } from "nsh";
+import { cleanup, createAnimatedValue, createMotion, effect, Overlay, type ViewRef, LayoutAnimation, List, reduceMotion, Scroll, signal, Text, untracked, View, windowSize, type JSX } from "nsh";
 import { onEscape } from "./escape";
-import { ShortcutsHelp, shortcutsFor } from "./ShortcutsHelp";
+import { ShortcutsHelp } from "./ShortcutsHelp";
+import { shortcutRows, useCommand } from "./commands";
 import { loadBookmarks, loadChannels, loadMyReplies, loadMyThreads, loadPmUsers, loadPosts, searchThreads } from "../discuz/forum";
 import { avatarPicture, userAvatar } from "../discuz/avatarCache";
 import { mergePage, type Channel, type Post } from "../discuz/parse";
@@ -605,8 +606,15 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     if (!searchOpen()) searchProps.onOpen();
     searchFocusTick.set(searchFocusTick() + 1);
   };
-  keymap.bind("/", openSearchFromKey, { when: "notEditing" });
-  keymap.bind("shift+/", () => shortcutsOpen.set(!shortcutsOpen()), { when: "notEditing" });
+  useCommand("forum.search", {
+    enabled: () => !!props.user() && !shortcutsOpen(),
+    run: openSearchFromKey,
+  });
+  useCommand("forum.shortcuts", { run: () => shortcutsOpen.set(!shortcutsOpen()) });
+  useCommand("forum.refresh", {
+    enabled: () => !nothingPicked() && !shortcutsOpen(),
+    run: () => refreshThreads(),
+  });
   // `n` and `p` open the next and the previous thread of the list, from the thread shown (the first
   // or the last when none is shown). They wait while the shortcut list is open.
   function stepThread(step: 1 | -1) {
@@ -618,7 +626,10 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     if (next < 0 || next >= list.length) return;
     openThread(list[next]);
   }
-  keymap.bind("n", () => stepThread(1), { when: "notEditing" });
+  useCommand("forum.next", {
+    enabled: () => !shortcutsOpen() && posts().length > 0,
+    run: () => stepThread(1),
+  });
   // A new thread goes into the channel open in the threads column: not into favorites, the user's own
   // posts or replies, messages, or the results of a title search.
   const canCompose = () => !!props.user() && !!channel() && !favorites() && !mine() && !replies() && !messages() && !history() && searchTerm() === null;
@@ -626,7 +637,10 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     if (!canCompose() || shortcutsOpen()) return;
     composing.set(true);
   }
-  keymap.bind("c", openComposer, { when: "notEditing" });
+  useCommand("forum.compose", {
+    enabled: () => canCompose() && !shortcutsOpen(),
+    run: openComposer,
+  });
   // After a post: the channel's list reloads, and the new thread opens when the forum showed it.
   function threadPosted(thread: Post | undefined) {
     const c = channel();
@@ -634,7 +648,10 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     if (c) openChannel(c);
     if (thread) openThread(thread);
   }
-  keymap.bind("p", () => stepThread(-1), { when: "notEditing" });
+  useCommand("forum.prev", {
+    enabled: () => !shortcutsOpen() && posts().length > 0,
+    run: () => stepThread(-1),
+  });
   cleanup(
     onEscape(() => {
       if (!shortcutsOpen()) return false;
@@ -1093,7 +1110,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
         )}
       </View>
       </View>
-      {shortcutsOpen() ? <ShortcutsHelp keys={shortcutsFor(shownThread() !== null)} onClose={() => shortcutsOpen.set(false)} /> : null}
+      {shortcutsOpen() ? <ShortcutsHelp keys={shortcutRows()} onClose={() => shortcutsOpen.set(false)} /> : null}
     </View>
   );
 }

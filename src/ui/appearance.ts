@@ -74,11 +74,15 @@ export function applyAppearance(mode: AppearanceMode) {
   setColorScheme(mode);
 }
 
+/** Sets the setting and remembers it. */
+export function chooseAppearance(mode: AppearanceMode) {
+  applyAppearance(mode);
+  Storage.setItem(STORAGE_KEY, mode).catch(() => undefined);
+}
+
 /** Moves to the next setting (system → light → dark → system) and remembers it. */
 export function cycleAppearance() {
-  const next = MODES[(MODES.indexOf(appearanceMode()) + 1) % MODES.length];
-  applyAppearance(next);
-  Storage.setItem(STORAGE_KEY, next).catch(() => undefined);
+  chooseAppearance(MODES[(MODES.indexOf(appearanceMode()) + 1) % MODES.length]);
 }
 
 /** Applies the setting saved by an earlier launch, if any. */

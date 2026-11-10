@@ -3,7 +3,8 @@
 // is one line until it has the focus or has text. Both screens share this one.
 // Pasted pictures show as thumbnails above the text; they have no remove control, and
 // they go with the reply. Cmd+Enter sends (Ctrl+Enter elsewhere); Enter adds a line.
-import { effect, Image, keymap, LayoutAnimation, reduceMotion, signal, Text, untracked, View, type PasteEvent } from "nsh";
+import { effect, Image, LayoutAnimation, reduceMotion, signal, Text, untracked, View, type PasteEvent } from "nsh";
+import { useCommand } from "./commands";
 import { Input } from "nsh/base";
 import { palette } from "./appearance";
 import { PlaneIcon, RefreshIcon } from "./icons";
@@ -68,13 +69,7 @@ export function ReplyBox(props: {
   onCancel?: () => void;
 }) {
   const sendable = () => (props.canSend ? props.canSend() : props.draft().length > 0) && !props.sending() && !props.uploading?.();
-  keymap.bind(
-    "mod+enter",
-    () => {
-      if (sendable()) props.onSend();
-    },
-    { when: "always" },
-  );
+  useCommand("reply.send", { enabled: sendable, run: () => props.onSend() });
   const pictures = () => props.attachments?.() ?? [];
   const floor = props.minField ?? MIN_FIELD;
   const ceiling = props.maxField ?? MAX_FIELD;
