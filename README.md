@@ -70,4 +70,4 @@ the local cookies.
 
 ## License
 
-No license has been chosen yet.
+MIT. See [LICENSE](LICENSE).
