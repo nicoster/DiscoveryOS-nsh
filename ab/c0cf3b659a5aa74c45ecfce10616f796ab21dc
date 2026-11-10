@@ -1,0 +1,19 @@
+App.tsx
+  s_2a9cfbca73bc73::t_3eeafa9773ae74 225-229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "abc0cf3b659a5aa74c45ecfce10616f796ab21dc",
+  "prompts": {},
+  "sessions": {
+    "s_2a9cfbca73bc73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48623943-e00e-422b-b517-bd4e0fae7c37",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
