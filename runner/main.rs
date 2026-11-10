@@ -22,7 +22,30 @@ thread_local! {
     static VIEW: RefCell<Option<Rc<AppView>>> = const { RefCell::new(None) };
 }
 
+/// Prints the app's logs to stderr: the JS `console` (target `js`), uncaught JS errors, warnings, errors and
+/// the update's messages. Without a logger installed, the `log` facade drops all of them, so the stock runner
+/// installs one of its own; this is the same, for this runner.
+struct StderrLogger;
+
+impl log::Log for StderrLogger {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        metadata.level() <= log::Level::Warn || metadata.target() == "js"
+    }
+
+    fn log(&self, record: &log::Record<'_>) {
+        if self.enabled(record.metadata()) {
+            eprintln!("{} {}: {}", record.level(), record.target(), record.args());
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+static LOGGER: StderrLogger = StderrLogger;
+
 fn main() -> ExitCode {
+    let _ = log::set_logger(&LOGGER);
+    log::set_max_level(log::LevelFilter::Info);
     nsh_platform_macos::set_ui_sets(vec![nsh_base::registry(), set_discoveryos()]);
 
     let Some(mtm) = MainThreadMarker::new() else {

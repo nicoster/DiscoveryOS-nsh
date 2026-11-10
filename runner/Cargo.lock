@@ -765,6 +765,7 @@ name = "discoveryos-runner"
 version = "0.0.0"
 dependencies = [
  "block2",
+ "log",
  "nsh-app-discoveryos",
  "nsh-base",
  "nsh-core",
