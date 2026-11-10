@@ -1,0 +1,23 @@
+src/ui/commands.ts
+  s_2a9cfbca73bc73::t_d5bdf84dbf1096 163
+src/ui/TitleBar.tsx
+  s_2a9cfbca73bc73::t_02773db588a310 189-201
+  s_2a9cfbca73bc73::t_0cf0c0f4582a22 9,12
+  s_2a9cfbca73bc73::t_e29ca1a96035c6 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "28958520507d0d9f9ca2676fd83439c35dd18633",
+  "prompts": {},
+  "sessions": {
+    "s_2a9cfbca73bc73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48623943-e00e-422b-b517-bd4e0fae7c37",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
