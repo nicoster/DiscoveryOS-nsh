@@ -1,0 +1,179 @@
+src/discuz/parse.test.ts
+  s_4c79668fd44472::t_39479da9bdd5ba 127
+  s_4c79668fd44472::t_56f763e9ceb7f7 125-126,128-159
+src/discuz/parse.ts
+  s_97130458cf5110::t_bd10a7a8284470 495-532
+  s_97130458cf5110::t_95c24fc25c079b 466-467
+  s_4c79668fd44472::t_3bc3e10ff2c657 304-349
+src/xiaohongshu/links.test.ts
+  s_0caaa95c8a3f07::t_429eb4f31c2897 1-24
+src/files.rs
+  s_dbced879e4bcb7::t_974816d2eceb62 1-60
+src/discuz/avatarCache.ts
+  s_97130458cf5110::t_5136344cd3d7e8 31
+  s_97130458cf5110::t_81ebcdc5cd0228 7
+App.tsx
+  s_4c79668fd44472::t_27b13c1ac0560f 139,141
+  s_4c79668fd44472::t_d294c50f39ed55 243-244,247,249
+  s_4c79668fd44472::t_b9ae0ec297e815 84-115
+  s_4c79668fd44472::t_215d2bfd6ac88b 356-397
+  s_4c79668fd44472::t_ef7c793c15e910 124-128,132-138,140,142-143,147-156
+  s_4c79668fd44472::t_d098ec2b49e8a3 56-83
+  s_4c79668fd44472::t_1b69997b412b35 1
+  s_4c79668fd44472::t_b6f58fe5906a08 10
+  s_4c79668fd44472::t_909ad1a8587235 4-5
+  s_4c79668fd44472::t_962472ab52e32e 129-130
+  s_4c79668fd44472::t_4195722cf015b6 415
+  s_4c79668fd44472::t_28da02cc994b0c 262-284
+  s_4c79668fd44472::t_72439909f9b01c 187-188
+  s_4c79668fd44472::t_81b5a6f8d17c8f 35
+  s_4c79668fd44472::t_e49438a07d34c7 212-242,245-246,248,250-253
+  s_4c79668fd44472::t_85abb4663a443f 131
+src/ui/ReplyBox.tsx
+  s_3beeb54cc346be::t_e3596b31241b8f 6
+  s_3beeb54cc346be::t_20bc7df3a612b0 39,41-43
+  s_3beeb54cc346be::t_525a8c72dd3c05 73-83
+  s_3beeb54cc346be::t_18595b1e55ab7c 149,153-165,177-188
+  s_3beeb54cc346be::t_ab0cdebf2909bf 170-171
+  s_3beeb54cc346be::t_010081848df0e3 150-152
+  s_3beeb54cc346be::t_06e280fc4a41c9 189
+  s_3beeb54cc346be::t_258cf9819428f9 166-169,172-176
+  s_3beeb54cc346be::t_9874c7f3d096c8 84-101
+  s_3beeb54cc346be::t_af9084126f41d7 128
+  s_3beeb54cc346be::t_0112b1ff4636cd 71-72
+  s_3beeb54cc346be::t_85a002b148f620 2-3
+  s_3beeb54cc346be::t_53a3465d9a0796 68-70
+  s_3beeb54cc346be::t_e308a86fae61e4 147-148
+  s_3beeb54cc346be::t_e1c817a9a6fe98 40
+  s_3beeb54cc346be::t_5e9ae14313a0c2 14-15,17-18,23-24,27-32
+src/discuz/attachments.ts
+  s_97130458cf5110::t_2b8fb6141b4bd9 1-3,8-9,11-12,16,18,21
+  s_97130458cf5110::t_f52f2029a7dd04 6
+  s_97130458cf5110::t_ac6bd1ff945c91 40
+  s_97130458cf5110::t_c7c171b8465500 23-24
+  s_97130458cf5110::t_44831cb46cb290 4-5,7,10,13-15,17,19-20,22,25-39,41-49
+src/bilibili/links.ts
+  s_0caaa95c8a3f07::t_a62848247d97cf 1-19
+src/ui/BiliLogin.tsx
+  s_0caaa95c8a3f07::t_275e59638cde70 1-47
+src/bilibili/video.ts
+  s_97130458cf5110::t_a838851b17ff97 4-5
+  s_97130458cf5110::t_debbc5b41f34bf 24-25
+  s_0caaa95c8a3f07::t_9cee19ddc0587f 1-3,6-23,26-40
+src/bilibili/video.test.ts
+  s_0caaa95c8a3f07::t_e1e0becdd11e23 1-4,7-12
+  s_0caaa95c8a3f07::t_5e685809980323 5-6
+src/xiaohongshu/links.ts
+  s_0caaa95c8a3f07::t_20b493b51bea80 1-22
+src/bilibili/links.test.ts
+  s_0caaa95c8a3f07::t_d9e3ebb80d00d6 1-14,16-17
+  s_0caaa95c8a3f07::t_16b5c33dc05517 15
+src/ui/BiliPlayer.tsx
+  s_0caaa95c8a3f07::t_7fac9c2136c77f 1-4,6-13,16-17,21-24,26-29,31-49
+  s_0caaa95c8a3f07::t_e34c2a2538c846 5,14-15,18-20,25,30
+src/douyin/links.ts
+  s_0caaa95c8a3f07::t_893e9b4fb7b832 1-22
+src/discuz/attachments.test.ts
+  s_97130458cf5110::t_4e108068d8479b 1-51
+src/discuz/forum.ts
+  s_4c79668fd44472::t_570af6063fe009 3
+  s_4c79668fd44472::t_ffc8ef05598e94 116-121
+README.md
+  s_79d4752f6b7349::t_2cb4976c18d409 59
+src/bilibili/session.ts
+  s_0caaa95c8a3f07::t_3f32f527c35758 1-51
+src/douyin/links.test.ts
+  s_0caaa95c8a3f07::t_cd15c9ecdfcdf4 15
+  s_0caaa95c8a3f07::t_b4c2d81c4fbc70 1-14,16-21
+src/ui/downloads.ts
+  s_97130458cf5110::t_c8d90b2d350c55 1-45
+src/discuz/encoding.ts
+  s_97130458cf5110::t_051a8a8126947a 17-26,28-29,31
+  s_97130458cf5110::t_47451b095e160b 4
+  s_97130458cf5110::t_bd5247f795dc5e 42-50,52
+  s_97130458cf5110::t_fabe7ed0872513 7
+src/net/traffic.ts
+  s_97130458cf5110::t_9a6cf19d05b8c0 1-106
+src/ui/Thread.tsx
+  s_0caaa95c8a3f07::t_b2c8853353ab14 302-304
+  s_97130458cf5110::t_af2ab538ed37c0 287-288,290-295
+  s_0caaa95c8a3f07::t_270bf7d84fe1a6 25-26
+  s_0caaa95c8a3f07::t_824c31f7c66651 282-286,289,296-301,308
+  s_0caaa95c8a3f07::t_8669bf566e9e77 23-24
+  s_0caaa95c8a3f07::t_9f4698dbd6d9e0 21-22
+  s_97130458cf5110::t_0857a4a6d33440 8-9
+  s_0caaa95c8a3f07::t_2d5071dc22ed65 305-307
+  s_0caaa95c8a3f07::t_6a8a2937a3f26e 6,176-177,181-186,188,190
+src/ui/XhsCard.tsx
+  s_0caaa95c8a3f07::t_d82167bfe8ad79 1-23
+nsh.json
+  s_0caaa95c8a3f07::t_d6dc5fb5ef46b7 11-13,25-30,42
+  s_0caaa95c8a3f07::t_f81d804b13a832 14-24,31-41
+  s_0caaa95c8a3f07::t_e7b9766ac5fe4a 43-46
+src/ui/DouyinPlayer.tsx
+  s_0caaa95c8a3f07::t_6141fdf786e52e 1-32
+Cargo.lock
+  s_dbced879e4bcb7::t_cb453ba968b654 65-73,192-201,708,774-812
+Cargo.toml
+  s_dbced879e4bcb7::t_1983a2118a30ac 16
+icon.svg
+  s_79d4752f6b7349::t_bdca8f0d61677b 1-22
+src/lib.rs
+  s_dbced879e4bcb7::t_e44594c77c5274 9,12,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "643ca2cf59e047c1cf471f720d8edb2c28801826",
+  "prompts": {},
+  "sessions": {
+    "s_0caaa95c8a3f07": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41a48d82-82ec-4047-8aab-2517c289d7ae",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_3beeb54cc346be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8dab700d-c119-4bd0-a8e3-219bda0c2d6d",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_4c79668fd44472": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e46e71e1-9481-4025-9a7a-250d05a0142c",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_79d4752f6b7349": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa89e3f8-77e9-4c70-a917-6ed13a8955a8",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_97130458cf5110": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e816d1bb-dc47-47a4-addd-9c5dbe22d382",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_dbced879e4bcb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76ca6066-6e5f-4230-be7c-598622c94839",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
