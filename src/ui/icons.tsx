@@ -9,7 +9,13 @@ import pencilSvg from "./pencil.svg";
 import themeSystemSvg from "./theme-system.svg";
 import themeLightSvg from "./theme-light.svg";
 import themeDarkSvg from "./theme-dark.svg";
+import downloadSvg from "./download.svg";
 import type { AppearanceMode } from "./appearance";
+
+/** The update button's icon, in `download.svg`: a blue disc with a white down arrow. */
+export function DownloadIcon(props: { size: number }) {
+  return <Image src={downloadSvg} style={{ width: props.size, height: props.size }} />;
+}
 
 /** The search icon, in `search.svg`: the same thin line as the refresh arrow. */
 export function SearchIcon(props: { size: number }) {

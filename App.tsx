@@ -7,10 +7,10 @@ import { clearCredentials, loadCredentials, saveCredentials } from "./src/discuz
 import { hasSavedCookies } from "./src/discuz/cookies";
 import { Forum } from "./src/ui/Forum";
 import { notify, Toaster } from "./src/ui/toast";
-import { ThemeIcon } from "./src/ui/icons";
+import { DownloadIcon, ThemeIcon } from "./src/ui/icons";
 import { hint } from "./src/ui/Hint";
 import { hideSystemTitleBar } from "./src/ui/TitleBar";
-import { startUpdateCheck } from "./src/update";
+import { availableUpdate, installUpdate, startUpdateCheck } from "./src/update";
 import { appearanceMode, appearanceName, cycleAppearance, palette, restoreAppearance, type AppearanceMode } from "./src/ui/appearance";
 
 // Port of `LoginView` (`Views/MainView.swift`) and `CurrentUserStore`: the forum is
@@ -272,6 +272,18 @@ function App() {
     );
   };
 
+  // An update the user can apply now; a downloaded one also applies at the next start.
+  const applyUpdate = () => {
+    const manifest = availableUpdate();
+    if (!manifest) return;
+    notify("update", `正在更新到 ${manifest.version}…`);
+    installUpdate(manifest)
+      .then((result) => {
+        if (result.startsWith("err")) notify("update", "更新失败，请稍后再试");
+      })
+      .catch(() => notify("update", "更新失败，请稍后再试"));
+  };
+
   // The account row and its controls sit at the bottom of the channel column,
   // as the Claude Code sidebar keeps its account at the bottom left. Signed out,
   // the row is a blank avatar that opens the sign-in dialog.
@@ -331,6 +343,13 @@ function App() {
             <Text style={{ fontSize: 13, color: palette().text }}>Sign in</Text>
           </View>
         )}
+        {availableUpdate() ? (
+          <IconButton
+            icon={<DownloadIcon size={18} />}
+            title={`Update to ${availableUpdate()!.version}`}
+            onPress={applyUpdate}
+          />
+        ) : null}
         <IconButton icon={<ThemeIcon size={16} mode={appearanceMode} />} title={`Theme: ${appearanceName(appearanceMode())}`} onPress={cycleAppearance} />
       </View>
     </View>
