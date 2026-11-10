@@ -1,0 +1,25 @@
+runner/Cargo.toml
+  s_99770a44b7937f::t_6e507255032621 19
+runner/main.rs
+  s_99770a44b7937f::t_54ea9bfd37d524 25-45,47-48
+.github/workflows/hot-update-package.yml
+  s_99770a44b7937f::t_68a98dced86148 19-22
+runner/Cargo.lock
+  s_99770a44b7937f::t_d59a71dcef07fd 768
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5c9e7dc6b1904e9d3d72ece335ab50e3fe7c3711",
+  "prompts": {},
+  "sessions": {
+    "s_99770a44b7937f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4be82022-1c73-4cca-845f-8fa2df77f986",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
