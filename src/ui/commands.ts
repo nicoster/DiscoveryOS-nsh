@@ -160,7 +160,7 @@ function appearanceItem(mode: AppearanceMode): MenuItem {
 }
 
 // The menu bar, top to bottom. Its items are built each time it is set, so their state is current.
-function menuBar(): MenuItem[] {
+export function menuBar(): MenuItem[] {
   return [
     submenu("DiscoveryOS", [role("about"), SEPARATOR, role("hide"), role("hideOthers"), role("showAll"), SEPARATOR, role("quit")]),
     submenu("Edit", [role("undo"), role("redo"), SEPARATOR, role("cut"), role("copy"), role("paste"), role("selectAll")]),

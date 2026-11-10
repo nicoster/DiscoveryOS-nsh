@@ -6,8 +6,10 @@
 import { cleanup, effect, LayoutAnimation, Overlay, reduceMotion, signal, Text, untracked, View, type ViewRef } from "nsh";
 import { Input } from "nsh/base";
 import { hint } from "./Hint";
-import { isAvailable, titleBar, Window } from "nsh/desktop";
+import { isAvailable, Menu, titleBar, Window } from "nsh/desktop";
+import { platform } from "nsh";
 import { palette } from "./appearance";
+import { menuBar } from "./commands";
 import { onEscape } from "./escape";
 import { channelsCollapsed, toggleChannelsCollapsed } from "./channelRail";
 import { SearchIcon, SidebarIcon } from "./icons";
@@ -184,6 +186,19 @@ export function TitleBar(props: { wide: () => boolean; search: SearchProps }) {
         paddingRight: titleBar().right + 14,
       }}
     >
+      {/* Windows hides the window's menu bar while the title bar is hidden, so the app's menus open from here. */}
+      {platform.os === "windows" ? (
+        <View
+          onPress={() => {
+            Menu.popup(menuBar()).catch(() => undefined);
+          }}
+          accessibilityLabel="Menu"
+          tooltip={hint("菜单")}
+          style={{ padding: 4, borderRadius: 6 }}
+        >
+          <Text style={{ fontSize: 13, color: palette().text }}>Menu</Text>
+        </View>
+      ) : null}
       {props.wide() ? (
         <View
           onPress={toggleChannelsCollapsed}
