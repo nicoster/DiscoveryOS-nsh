@@ -232,10 +232,15 @@ function App() {
       >
         <Text style={{ fontSize: 14, fontWeight: 600, color: palette().text }}>{user() ?? ""}</Text>
         {p ? (
-          MENU_ROWS.map(([label, key]) => {
-            const value = p[key];
-            return value ? <MenuRow key={key} label={label} value={value} /> : null;
-          })
+          <Each
+            of={MENU_ROWS.flatMap(([label, key]) => {
+              const value = p[key];
+              return value ? [{ label, value }] : [];
+            })}
+            key={(row: { label: string; value: string }) => row.label}
+          >
+            {(row) => <MenuRow label={row().label} value={row().value} />}
+          </Each>
         ) : (
           <Text style={{ fontSize: 12, color: palette().muted }}>Loading…</Text>
         )}
