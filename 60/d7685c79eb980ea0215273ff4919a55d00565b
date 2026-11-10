@@ -1,0 +1,21 @@
+README.md
+  s_8c2d1600963cdf::t_e24ba20a90797d 73
+LICENSE
+  s_8c2d1600963cdf::t_1a8aa42b39052a 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "60d7685c79eb980ea0215273ff4919a55d00565b",
+  "prompts": {},
+  "sessions": {
+    "s_8c2d1600963cdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98a4e086-470d-4aca-87bb-f821ee339a93",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
