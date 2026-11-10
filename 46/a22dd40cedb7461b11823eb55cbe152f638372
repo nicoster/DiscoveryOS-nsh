@@ -1,0 +1,44 @@
+scripts/install.sh
+  s_0a82adbda003bd::t_1db45e77d9f704 1-26,31-32,34-50
+  s_0a82adbda003bd::t_70cc14073a85b6 27-29,33
+  s_0a82adbda003bd::t_7477c402665603 30
+scripts/package-macos.sh
+  s_79d4752f6b7349::t_6687147644b502 10
+scripts/build-hot-update.sh
+  s_bfb9b1fe97d422::t_431df93c61d40f 1-5,7,12-15,17-19,31-34,37-39,41-43,69-70,72-77,79-115
+  s_bfb9b1fe97d422::t_f166c26be06d79 6,8-11,16,20-30,35-36,40,44-68,71,78
+icon.svg
+  s_79d4752f6b7349::t_3bf5d61562e9b7 10,13-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "46a22dd40cedb7461b11823eb55cbe152f638372",
+  "prompts": {},
+  "sessions": {
+    "s_0a82adbda003bd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f0f1e07c-2e60-46f2-841f-377cb21d6d5b",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_79d4752f6b7349": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa89e3f8-77e9-4c70-a917-6ed13a8955a8",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_bfb9b1fe97d422": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b01dc240-608e-470a-bcff-33b1b21c3402",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
