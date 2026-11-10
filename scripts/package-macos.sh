@@ -7,7 +7,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-nsh package --target macos
+nsh package --target macos --icon icon.png
 
 app=".nsh/out/DiscoveryOS.app"
 exe_name=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$app/Contents/Info.plist")
