@@ -1,0 +1,20 @@
+# The macOS runner of the app with hot updates. `nsh package` builds its own runner, which only loads the
+# bundle shipped in the app; `scripts/package-macos.sh` swaps this one in. See docs/hot-update.md.
+[package]
+name = "discoveryos-runner"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "DiscoveryOS"
+path = "main.rs"
+
+[dependencies]
+nsh-core = { version = "=0.3.0" }
+nsh-base = { version = "=0.3.0", features = ["highlight"] }
+nsh-platform-macos = { version = "=0.3.0" }
+nsh-app-discoveryos = { path = ".." }
+block2 = "0.6"
+
+[workspace]
