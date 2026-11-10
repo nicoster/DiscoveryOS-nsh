@@ -17,6 +17,13 @@ export function openCookieImport(): void {
   cookieImportOpen.set(true);
 }
 
+// Set by the app root: runs the session restore after a successful import, so the import signs in.
+let onImported: (() => void) | null = null;
+
+export function setOnCookiesImported(fn: () => void): void {
+  onImported = fn;
+}
+
 function DialogButton(props: { label: string; disabled?: boolean; secondary?: boolean; onPress: () => void }) {
   const secondary = props.secondary === true;
   return (
@@ -54,8 +61,8 @@ export function CookieImportDialog(): JSX.Element {
   function doImport(): void {
     const count = importCookies(pastedText());
     if (count > 0) {
-      notify("cookies", `Imported ${count} cookies. Restart the app to sign in with them.`);
       close();
+      onImported?.();
     } else {
       notify("cookies", "No cookies found in the text. Paste JSON or a Cookie header.");
     }

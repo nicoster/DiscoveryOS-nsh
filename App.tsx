@@ -13,7 +13,7 @@ import { hideSystemTitleBar } from "./src/ui/TitleBar";
 import { availableUpdate, installUpdate, startUpdateCheck } from "./src/update";
 import { appearanceMode, appearanceName, cycleAppearance, palette, restoreAppearance, type AppearanceMode } from "./src/ui/appearance";
 import { installMenu } from "./src/ui/commands";
-import { CookieImportDialog, cookieImportOpen } from "./src/ui/CookieImport";
+import { CookieImportDialog, cookieImportOpen, setOnCookiesImported } from "./src/ui/CookieImport";
 import { debugEnabled } from "./src/debugLog";
 
 // Port of `LoginView` (`Views/MainView.swift`) and `CurrentUserStore`: the forum is
@@ -214,11 +214,11 @@ function App() {
   restoreAppearance();
   installMenu();
 
-  // Restore the session once, on launch: the saved cookies first, then the
-  // saved password. Only a refused password clears what is saved. With nothing
-  // saved, or a login that no longer works, the sign-in dialog opens.
-  const saved = loadCredentials();
-  if (saved || hasSavedCookies()) {
+  // Restores the session: the saved cookies first, then the saved password. Only a
+  // refused password clears what is saved. With nothing saved, or a login that no
+  // longer works, the sign-in dialog opens. Runs on launch and after a cookie import.
+  function restoreLogin() {
+    const saved = loadCredentials();
     busy.set(true);
     restoreSession(saved)
       .then((state) => {
@@ -230,6 +230,13 @@ function App() {
       })
       .catch((e) => notify("restore", `Could not restore the login: ${e}`))
       .finally(() => busy.set(false));
+  }
+
+  // Debug: an import of cookies signs in with them at once.
+  setOnCookiesImported(restoreLogin);
+
+  if (loadCredentials() || hasSavedCookies()) {
+    restoreLogin();
   } else {
     dialogOpen.set(true);
   }
