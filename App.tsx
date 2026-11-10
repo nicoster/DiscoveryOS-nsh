@@ -222,7 +222,11 @@ function App() {
     busy.set(true);
     restoreSession(saved)
       .then((state) => {
-        if (state === "signed-in") showProfile(currentUser() ?? saved?.name ?? "");
+        if (state === "signed-in") {
+          // The same completion as a sign-in: the profile shows and the sign-in dialog closes.
+          showProfile(currentUser() ?? saved?.name ?? "");
+          dialogOpen.set(false);
+        }
         else if (state === "signed-out") {
           if (saved) clearCredentials();
           dialogOpen.set(true);
