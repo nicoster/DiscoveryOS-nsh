@@ -1,0 +1,44 @@
+src/ui/Forum.tsx
+  s_bfb9b1fe97d422::t_0ab5542db068f2 640-643
+  s_bfb9b1fe97d422::t_8ccaf2c3c50436 651-654
+  s_bfb9b1fe97d422::t_e6483f72a2789f 1113
+  s_bfb9b1fe97d422::t_714a9d8dae8485 4
+  s_bfb9b1fe97d422::t_79a74c601faead 6-7
+  s_bfb9b1fe97d422::t_21e287e40e0783 609-617
+  s_bfb9b1fe97d422::t_86aa864cc466e7 629-632
+src/ui/Thread.tsx
+  s_bfb9b1fe97d422::t_80fbc55ccc915e 177-178,186,195-211,217
+  s_bfb9b1fe97d422::t_3f8c67b7ce34b0 9
+src/ui/ReplyBox.tsx
+  s_bfb9b1fe97d422::t_4418937bae9bb2 72
+  s_bfb9b1fe97d422::t_6c9329c01df05e 6-7
+src/ui/appearance.ts
+  s_bfb9b1fe97d422::t_fa57a91931dd24 77-82,85
+src/ui/ShortcutsHelp.tsx
+  s_bfb9b1fe97d422::t_ac90d193769a43 1-3
+src/ui/commands.ts
+  s_bfb9b1fe97d422::t_ce1bf48dffc7bf 1-186
+App.tsx
+  s_bfb9b1fe97d422::t_59598bf7eb1187 15
+  s_bfb9b1fe97d422::t_3bc34bd22df985 213
+.github/workflows/hot-update-package.yml
+  s_bfb9b1fe97d422::t_e08d0728e87a76 20-21
+nsh.json
+  s_bfb9b1fe97d422::t_807cdbaf7cfe27 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "fa0ee6c20a02d1694cbb042bb7027fca774d887b",
+  "prompts": {},
+  "sessions": {
+    "s_bfb9b1fe97d422": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b01dc240-608e-470a-bcff-33b1b21c3402",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
