@@ -1,0 +1,23 @@
+src/ui/CookieImport.tsx
+  s_2a9cfbca73bc73::t_84c26f263e32fb 65
+  s_2a9cfbca73bc73::t_7429529e8b7a6c 20-26
+App.tsx
+  s_2a9cfbca73bc73::t_4e57e6db7c3071 217-221,233-239
+  s_2a9cfbca73bc73::t_8b0c63ec19e5c7 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "15f4c72ac57d9904759f1597774f9de1109e03d3",
+  "prompts": {},
+  "sessions": {
+    "s_2a9cfbca73bc73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48623943-e00e-422b-b517-bd4e0fae7c37",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
