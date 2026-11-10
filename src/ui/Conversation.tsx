@@ -6,9 +6,9 @@ import { TextView } from "nsh/base";
 import { loadPmConversation, sendPm } from "../discuz/forum";
 import { absolutize, absoluteUrl, fixImages, threadIdFromLink, trimLeadingBlanks, type PmMessage, type Post } from "../discuz/parse";
 import { HOST } from "../discuz/client";
-import { dbg } from "../debugConsole";
 import { palette } from "./appearance";
 import { notify } from "./toast";
+import { openLink } from "./links";
 import { ReplyBox } from "./ReplyBox";
 import { ReplyCard } from "./ReplyCard";
 
@@ -43,7 +43,7 @@ export function Conversation(props: { peer: () => Post; onOpenThread?: (tid: str
   async function setDraft(text: string) {
     draft.set(text);
     // A draft that cannot be saved (storage full) is a convenience lost, not a failed action.
-    await Storage.setItem(draftKey(props.peer().id), text).catch((e) => dbg("draft not saved", String(e)));
+    await Storage.setItem(draftKey(props.peer().id), text).catch(() => undefined);
   }
 
   async function send() {
@@ -99,6 +99,7 @@ export function Conversation(props: { peer: () => Post; onOpenThread?: (tid: str
                   onLinkPress={(e) => {
                     const tid = threadIdFromLink(e.url);
                     if (tid && props.onOpenThread) props.onOpenThread(tid);
+                    else void openLink(e.url);
                   }}
                 />
               }

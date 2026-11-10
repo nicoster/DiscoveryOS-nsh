@@ -45,6 +45,11 @@
       "schemes": [
         "https"
       ]
+    },
+    "process": {
+      "env": [
+        "DEBUG"
+      ]
     }
   }
 }

@@ -17,9 +17,10 @@ test("a narrow window folds the channel column into a rail, without its heading"
   expect(app.texts()).toContain("Threads");
 });
 
-test("a failed channel load says so in a toast that offers a retry", async () => {
+test("signed out with nothing saved, the sign-in dialog opens and no channel error is shown", async () => {
   const app = await open("./App.tsx", { width: 1200 });
-  expect(app.texts()).toContain("Couldn't load channels. Tap to retry.");
+  expect(app.texts()).toContain("Account");
+  expect(app.texts()).not.toContain("Couldn't load channels. Tap to retry.");
 });
 
 test("the blank avatar opens the sign-in dialog, and Cancel closes it", async () => {

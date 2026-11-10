@@ -7,13 +7,13 @@ import { fetchLogged } from "../net/traffic";
 export const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15";
 
-/** A GB18030 page as text, and the `Set-Cookie` values it came with. */
+/** A GB18030 page as text, the `Set-Cookie` values it came with, and the URL it finally came from (after any redirect). */
 export async function fetchGbRequest(
   method: "GET" | "POST",
   url: string,
   body?: string,
   cookie?: string,
-): Promise<{ html: string; setCookies: string[] }> {
+): Promise<{ html: string; setCookies: string[]; url: string }> {
   const { response, bytes } = await fetchLogged(
     url,
     {
@@ -29,7 +29,7 @@ export async function fetchGbRequest(
   );
   if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
   const html = Gb18030.decode(bytes);
-  return { html, setCookies: response.headers.getSetCookie() };
+  return { html, setCookies: response.headers.getSetCookie(), url: response.url };
 }
 
 /** A multipart POST (an attachment upload). Its reply is GB18030 text; the

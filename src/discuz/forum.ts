@@ -1,8 +1,7 @@
 // The forum pages: the channel list and a channel's thread list.
-import { currentFormHash, currentUser, request } from "./client";
+import { currentFormHash, currentUser, isLoginRequired, request } from "./client";
 import { parseBookmarks, parseChannels, parseMyReplies, parseMyThreads, parsePmConversation, parsePmUsers, parsePosts, parseProfile, parseReplies, parseSearchResults, parseThreadPageInfo, parseUser, type Author, type Channel, type PmMessage, type Post, type Profile, type Reply } from "./parse";
 import { formEncodeGb, htmlEntities } from "./encoding";
-import { dbg } from "../debugConsole";
 
 export async function loadChannels(): Promise<Channel[]> {
   return parseChannels(await request("GET", "index.php"));
@@ -11,7 +10,6 @@ export async function loadChannels(): Promise<Channel[]> {
 export async function loadPosts(fid: string, page = 1): Promise<Post[]> {
   const html = await request("GET", "forumdisplay.php", { query: [["fid", fid], ["page", String(page)]] });
   const posts = parsePosts(html);
-  dbg("threads response", { fid, page, bytes: html.length, count: posts.length, ids: posts.map((p) => p.id) });
   return posts;
 }
 
@@ -37,13 +35,14 @@ export async function searchThreads(keyword: string): Promise<Post[]> {
   });
   if (html.includes("您还未登录")) throw new Error(currentUser() ? "Search needs a fresh sign-in" : "Sign in to search");
   const posts = parseSearchResults(html);
-  dbg("search response", { keyword, bytes: html.length, count: posts.length });
   return posts;
 }
 
 /** A thread page's replies, with the thread's title and forum when the page names them. */
 export async function loadReplyPage(tid: string, page = 1): Promise<{ title?: string; fid?: string; replies: Reply[] }> {
   const html = await request("GET", "viewthread.php", { query: [["tid", tid], ["page", String(page)]] });
+  // Still the login page after the automatic sign-in (or with none): not a thread, so it fails.
+  if (isLoginRequired(html)) throw new Error("Sign-in required to read the thread");
   return { ...parseThreadPageInfo(html), replies: parseReplies(html) };
 }
 

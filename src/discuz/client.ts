@@ -2,7 +2,6 @@
 // page size, and the re-login when a page asks for it. Pages are GB18030.
 import { formEncodeGb, fetchGbRequest, htmlEntities, postFormGb } from "./encoding";
 import { absorbSetCookie, clearCookies, cookieHeader } from "./cookies";
-import { dbg } from "../debugConsole";
 
 export const HOST = "https://www.4d4y.com/forum/";
 
@@ -52,7 +51,7 @@ export async function request(
   const { html, setCookies } = await fetchGbRequest(method, url, body, headerCookie);
   absorbSetCookie(setCookies);
   if (retry && isLoginRequired(html) && session) {
-    const relogged = await dologin(session.name, session.pass);
+    const relogged = await reLogin(session.name, session.pass);
     if (relogged) return request(method, path, { query, form, retry: false, cookie });
   }
   return html;
@@ -64,6 +63,17 @@ async function dologin(name: string, pass: string): Promise<string | undefined> 
     retry: false,
   });
   return parseFormHash(html);
+}
+
+// The login in progress, if any. Requests that find the login page while one runs
+// share its answer, so a burst of loads logs in once rather than once each.
+let loginInFlight: Promise<string | undefined> | null = null;
+
+function reLogin(name: string, pass: string): Promise<string | undefined> {
+  loginInFlight ??= dologin(name, pass).finally(() => {
+    loginInFlight = null;
+  });
+  return loginInFlight;
 }
 
 async function loadConfig(): Promise<void> {
@@ -167,8 +177,13 @@ const UPLOAD_ERRORS: Record<string, string> = {
 // sends it with the attachments so Discuz links them to the post.
 const postTimes = new Map<string, string>();
 
-async function replyBox(fid: string, tid: string): Promise<ReplyBox> {
-  const box = parseReplyBox(await request("GET", `post.php?action=reply&fid=${fid}&tid=${tid}`));
+// The post time of a new thread's box, per channel; a thread not yet posted has no thread id.
+const newThreadKey = (fid: string) => `new:${fid}`;
+
+// The reply box of a thread, or the new-thread box of a channel when there is no thread yet.
+async function replyBox(fid: string, tid?: string): Promise<ReplyBox> {
+  const url = tid ? `post.php?action=reply&fid=${fid}&tid=${tid}` : `post.php?action=newthread&fid=${fid}`;
+  const box = parseReplyBox(await request("GET", url));
   if (!box) throw new Error("The reply box has no image upload");
   return box;
 }
@@ -186,10 +201,10 @@ async function unusedImages(posttime: string): Promise<string[]> {
  * (`misc.php?action=swfupload`), and resolves with its attachment id: the new
  * entry in the reply box's list. The reply then names it in `[attachimg]`.
  */
-export async function uploadAttachment(fid: string, tid: string, file: File, kind: "image" | "file"): Promise<string> {
+export async function uploadAttachment(fid: string, tid: string | undefined, file: File, kind: "image" | "file"): Promise<string> {
   if (!formHash) throw new Error("Not signed in");
   const box = await replyBox(fid, tid);
-  postTimes.set(tid, box.posttime);
+  postTimes.set(tid ?? newThreadKey(fid), box.posttime);
   const before = await unusedImages(box.posttime);
   const form = new FormData();
   form.append("uid", box.uid);
@@ -235,7 +250,6 @@ export async function postReply(fid: string, tid: string, content: string): Prom
     extra.push(["posttime", posttime]);
     for (const id of ids) extra.push([`attachnew[${id}][description]`, ""]);
   }
-  dbg("reply attachments", ids, "posttime", extra[0]?.[1] ?? "none", "message", message);
   const html = await request(
     "POST",
     `post.php?action=reply&fid=${fid}&tid=${tid}&extra=page%3D1&replysubmit=yes&infloat=yes&handlekey=fastpost&inajax=1`,
@@ -245,9 +259,7 @@ export async function postReply(fid: string, tid: string, content: string): Prom
     },
   );
   const outcome = replyOutcome(html);
-  dbg("reply response", html.length, "outcome", outcome.posted === false ? `refused: ${outcome.reason}` : outcome.posted);
   if (outcome.posted === false) throw new ReplyRefused(outcome.reason);
-  if (outcome.posted === "unsure") dbg("reply response unclear, treated as posted", html.length, html.slice(0, 400));
 }
 
 /**
@@ -255,7 +267,7 @@ export async function postReply(fid: string, tid: string, content: string): Prom
  * either with its `postbox` box (the full page) or with the AJAX call
  * `messagehandle_fastpost('<code>', '<message>')`, e.g. the 30-second flood limit. A response
  * with neither is not a refusal, so the post is treated as made and the thread is refreshed
- * to show what the server holds; `"unsure"` marks that case for the debug console.
+ * to show what the server holds.
  */
 export function replyOutcome(html: string): { posted: true | "unsure" } | { posted: false; reason: string } {
   if (html.includes(REPLY_OK)) return { posted: true };
@@ -264,6 +276,75 @@ export function replyOutcome(html: string): { posted: true | "unsure" } | { post
   const refusal = POSTBOX.exec(html)?.[1];
   if (refusal) return { posted: false, reason: refusal.replace(/<[^>]*>/g, "").trim() };
   return { posted: "unsure" };
+}
+
+/** A new thread whose answer does not show it was posted. It is not retried, since it may be there already. */
+export class ThreadUnconfirmed extends Error {}
+
+/** The post time of the new-thread form (`post.php?action=newthread`), if the page has one. */
+export function parseNewThreadPostTime(html: string): string | undefined {
+  return /name="posttime" id="posttime" value="(\d+)"/.exec(html)?.[1];
+}
+
+/** The thread a URL names (`viewthread.php?tid=N`): where the forum sends the user once a new thread is posted. */
+export function threadIdFromUrl(url: string): string | undefined {
+  return /viewthread\.php\?tid=(\d+)/.exec(url)?.[1];
+}
+
+/**
+ * Posts a new thread in `fid` (`post.php?action=newthread`), with the same form the site sends
+ * from a browser. Resolves with the new thread's id, or `undefined` when the forum confirmed the
+ * post without showing the thread. Rejects with `ReplyRefused` when the forum refuses it, and
+ * with `ThreadUnconfirmed` when the answer shows neither.
+ */
+export async function postThread(fid: string, subject: string, content: string): Promise<string | undefined> {
+  if (!formHash) throw new Error("Not signed in");
+  if (!subject.trim()) throw new ReplyRefused("请填写标题。");
+  // The form's post time is read first, as the reply box's is; the site checks it with the post.
+  const formPage = await request("GET", `post.php?action=newthread&fid=${fid}`);
+  if (isLoginRequired(formPage)) throw new ReplyRefused("请重新登录后再发帖。");
+  const posttime = parseNewThreadPostTime(formPage);
+  if (!posttime) throw new ReplyRefused("无法读取这个版块的发帖表单。");
+  const fields: [string, string][] = [
+    ["formhash", formHash],
+    ["posttime", posttime],
+    ["wysiwyg", "1"],
+    ["iconid", ""],
+    ["subject", htmlEntities(subject.trim())],
+    ["message", htmlEntities(content.replace(/\n/g, "\r\n"))],
+    ["tags", ""],
+    ["usesig", "1"],
+  ];
+  // The pictures and files the text inserts go with the thread, linked by the post time their box
+  // uploaded them under; the form's own post time is then that one.
+  const ids = attachedIds(content);
+  if (ids.length > 0) {
+    const stamp = postTimes.get(newThreadKey(fid)) ?? posttime;
+    fields.find(([k]) => k === "posttime")![1] = stamp;
+    for (const id of ids) fields.push([`attachnew[${id}][description]`, ""]);
+  }
+  const body = fields.map(([k, v]) => `${formEncodeGb(k)}=${formEncodeGb(v)}`).join("&");
+  const { html, setCookies, url } = await fetchGbRequest(
+    "POST",
+    `${HOST}post.php?action=newthread&fid=${fid}&extra=&topicsubmit=yes`,
+    body,
+    cookieHeader() || undefined,
+  );
+  absorbSetCookie(setCookies);
+  // A successful post redirects to the new thread; the final URL (after the redirect) names it.
+  const tid = threadIdFromUrl(url);
+  if (tid) {
+    postTimes.delete(newThreadKey(fid));
+    return tid;
+  }
+  if (isLoginRequired(html)) throw new ReplyRefused("请重新登录后再发帖。");
+  const outcome = replyOutcome(html);
+  if (outcome.posted === false) throw new ReplyRefused(outcome.reason);
+  if (outcome.posted === true) {
+    postTimes.delete(newThreadKey(fid));
+    return undefined;
+  }
+  throw new ThreadUnconfirmed("The forum did not confirm the new thread.");
 }
 
 export function currentUser(): string | null {

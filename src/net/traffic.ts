@@ -1,6 +1,8 @@
-// Logs every HTTP request the app sends, and each response, to the terminal (stdout).
+// Logs every HTTP request the app sends, and each response, to the terminal (stdout) when DEBUG=1.
 // Secrets are redacted: Cookie and Set-Cookie values, and form fields named like a password.
 // Text bodies are printed (cut at BODY_LOG_LIMIT characters); binary bodies only give their size.
+
+import { consoleDebug } from "../debugLog";
 
 const BODY_LOG_LIMIT = 20_000;
 // Header names and form field names whose values are never printed.
@@ -56,10 +58,10 @@ function describeBody(body: BodyInit | null | undefined): string {
 
 function printText(text: string): void {
   if (text.length <= BODY_LOG_LIMIT) {
-    console.log(text);
+    consoleDebug(text);
     return;
   }
-  console.log(`${text.slice(0, BODY_LOG_LIMIT)}\nHTTP   … ${text.length - BODY_LOG_LIMIT} more characters not shown`);
+  consoleDebug(`${text.slice(0, BODY_LOG_LIMIT)}\nHTTP   … ${text.length - BODY_LOG_LIMIT} more characters not shown`);
 }
 
 /**
@@ -74,11 +76,11 @@ export async function fetchLogged(
 ): Promise<{ response: Response; bytes: Uint8Array }> {
   const method = (init.method ?? "GET").toUpperCase();
   const started = Date.now();
-  console.log(`HTTP > ${method} ${url}`);
+  consoleDebug(`HTTP > ${method} ${url}`);
   new Headers(init.headers).forEach((value, name) => {
-    console.log(`HTTP   ${name}: ${SECRET_NAME.test(name) ? redactCookieHeader(value) : value}`);
+    consoleDebug(`HTTP   ${name}: ${SECRET_NAME.test(name) ? redactCookieHeader(value) : value}`);
   });
-  console.log(`HTTP   body: ${describeBody(init.body)}`);
+  consoleDebug(`HTTP   body: ${describeBody(init.body)}`);
 
   let response: Response;
   let bytes: Uint8Array;
@@ -86,21 +88,21 @@ export async function fetchLogged(
     response = await fetch(url, init);
     bytes = new Uint8Array(await response.arrayBuffer());
   } catch (e) {
-    console.log(`HTTP ! ${method} ${url} failed after ${Date.now() - started} ms: ${String(e)}`);
+    consoleDebug(`HTTP ! ${method} ${url} failed after ${Date.now() - started} ms: ${String(e)}`);
     throw e;
   }
 
-  console.log(`HTTP < ${response.status} ${response.statusText} ${method} ${url} (${Date.now() - started} ms)`);
+  consoleDebug(`HTTP < ${response.status} ${response.statusText} ${method} ${url} (${Date.now() - started} ms)`);
   response.headers.forEach((value, name) => {
-    if (name !== "set-cookie") console.log(`HTTP   ${name}: ${value}`);
+    if (name !== "set-cookie") consoleDebug(`HTTP   ${name}: ${value}`);
   });
-  for (const line of response.headers.getSetCookie()) console.log(`HTTP   set-cookie: ${redactSetCookie(line)}`);
+  for (const line of response.headers.getSetCookie()) consoleDebug(`HTTP   set-cookie: ${redactSetCookie(line)}`);
   const type = response.headers.get("content-type") ?? "";
   if (/text|json|xml|javascript/i.test(type)) {
-    console.log(`HTTP   body (${bytes.length} bytes):`);
+    consoleDebug(`HTTP   body (${bytes.length} bytes):`);
     printText(decode(bytes));
   } else {
-    console.log(`HTTP   body (${bytes.length} bytes, ${type || "no content type"}, not shown)`);
+    consoleDebug(`HTTP   body (${bytes.length} bytes, ${type || "no content type"}, not shown)`);
   }
   return { response, bytes };
 }

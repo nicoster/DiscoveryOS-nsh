@@ -3,7 +3,6 @@
 import { exists, mkdir, writeFile } from "fs/promises";
 import { homedir } from "os";
 import { AttachmentError, fetchAttachment, safeFileName, splitFileName } from "../discuz/attachments";
-import { dbg } from "../debugConsole";
 import { notify } from "./toast";
 
 const TOAST = "download";
@@ -33,10 +32,8 @@ export async function downloadAttachment(url: string, name: string): Promise<voi
   try {
     const bytes = await fetchAttachment(url, name);
     const path = await saveToDownloads(name, bytes);
-    dbg("attachment saved", name, "bytes", bytes.length);
     notify(TOAST, `Saved ${path.split("/").pop()} to Downloads.`);
   } catch (e) {
-    dbg("attachment failed", name, String(e));
     const reason = e instanceof AttachmentError ? `: ${e.message}` : "";
     notify(TOAST, `Couldn't download ${name}${reason}.`);
   } finally {

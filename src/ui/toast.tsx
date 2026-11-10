@@ -1,5 +1,5 @@
-// Every message the app shows that comes and goes on its own: "Reply posted", "Couldn't load
-// threads", "Offline: the saved login is kept". A message with the same id replaces the one
+// Every message the app shows that comes and goes on its own, at the window's top-right:
+// "Reply posted", "Couldn't load threads", "Offline: the saved login is kept". A message with the same id replaces the one
 // showing, rather than stacking a copy. A message with a tap action (a failed load's retry)
 // runs the action when tapped and hides itself.
 import { createMotion, signal, Text, View } from "nsh";
@@ -70,10 +70,10 @@ function ToastItem(props: { text: string; onPress?: () => void }) {
   );
 }
 
-/** The toasts, at the bottom of the window. Place it in a view that fills the window. */
+/** The toasts, in the window's top-right corner. Place it in a view that fills the window. */
 export function Toaster() {
   return (
-    <View style={{ position: "absolute", left: 0, right: 0, bottom: 16, alignItems: "center", gap: 6 }}>
+    <View style={{ position: "absolute", top: 12, right: 12, alignItems: "flex-end", gap: 6 }}>
       <Each of={shown()} key={(e: ToastEntry) => e.id}>
         {(entry) => <ToastItem text={String(entry().value)} onPress={actions.has(entry().id) ? () => tap(entry().id) : undefined} />}
       </Each>

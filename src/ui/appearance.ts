@@ -13,6 +13,8 @@ export interface Palette {
   border: string;
   surface: string;
   selected: string;
+  /** The faint tint of a reply under the pointer; lighter than `selected`, which is for selections. */
+  replyHighlight: string;
   danger: string;
   button: string;
   buttonText: string;
@@ -27,6 +29,7 @@ const LIGHT: Palette = {
   border: "#d0d7de",
   surface: "#f6f8fa",
   selected: "#dbe4ff",
+  replyHighlight: "#f9fcfe",
   danger: "#cf222e",
   button: "#1f2328",
   buttonText: "#ffffff",
@@ -41,6 +44,7 @@ const DARK: Palette = {
   border: "#3d444d",
   surface: "#161b22",
   selected: "#1c2d4a",
+  replyHighlight: "#1a2334",
   danger: "#f85149",
   button: "#e6edf3",
   buttonText: "#0d1117",

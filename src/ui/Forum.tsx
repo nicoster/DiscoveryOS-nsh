@@ -1,16 +1,19 @@
 // The signed-in screens in three columns, as the Swift app's split view:
 // channels | a channel's threads (or favorites) | the open thread.
 // Components run once, so the views switch inside JSX, not by early return.
-import { createAnimatedValue, createMotion, effect, Overlay, type YNode, LayoutAnimation, List, reduceMotion, Scroll, signal, Text, untracked, View, windowSize, type JSX } from "nsh";
+import { cleanup, createAnimatedValue, createMotion, effect, keymap, Overlay, type YNode, LayoutAnimation, List, reduceMotion, Scroll, signal, Text, untracked, View, windowSize, type JSX } from "nsh";
+import { onEscape } from "./escape";
+import { ShortcutsHelp, shortcutsFor } from "./ShortcutsHelp";
 import { loadBookmarks, loadChannels, loadMyReplies, loadMyThreads, loadPmUsers, loadPosts, searchThreads } from "../discuz/forum";
 import { avatarPicture, userAvatar } from "../discuz/avatarCache";
 import { mergePage, type Channel, type Post } from "../discuz/parse";
-import { dbg } from "../debugConsole";
 import { Thread } from "./Thread";
+import { NewThread } from "./NewThread";
 import { Conversation } from "./Conversation";
 import { LoadingBar } from "./LoadingBar";
 import { channelIcon } from "./channelIcon";
-import { RefreshIcon, SidebarIcon } from "./icons";
+import { PencilIcon, RefreshIcon, SidebarIcon } from "./icons";
+import { hint } from "./Hint";
 import { palette } from "./appearance";
 import { loadLastPlace, saveLastPlace } from "./lastPlace";
 import { ThreadSkeleton } from "./Skeleton";
@@ -154,7 +157,7 @@ function ChannelRow(props: { channel: Channel; selected: () => boolean; railed: 
 
 // `user` is the signed-in name, or null. The forum lists channels and threads for
 // everyone; signing in or out reloads the channel list, since an account sees more.
-export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user: () => string | null }) {
+export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user: () => string | null; onSignInNeeded?: () => void }) {
   const channels = signal<Channel[] | null>(null);
   const channel = signal<Channel | null>(null);
   const favorites = signal(false);
@@ -165,6 +168,8 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   // Private messages: a list of correspondents, and the one whose messages are open.
   const messages = signal(false);
   const peer = signal<Post | null>(null);
+  // Writing a new thread in the channel open in the threads column; the thread column shows the form.
+  const composing = signal(false);
   const thread = signal<Post | null>(null);
   // Threads opened from a 4d4y link in the open thread, the last one shown in its column; Back pops one.
   // The threads column and its selection stay as they were.
@@ -181,6 +186,10 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   const searchTerm = signal<string | null>(null);
   const searchOpen = signal(false);
   const searchDraft = signal("");
+  // Counts up to move the focus into the search field (the `/` shortcut).
+  const searchFocusTick = signal(0);
+  // The shortcut list (`?`), open over the window. Its keys work with or without a thread open.
+  const shortcutsOpen = signal(false);
   // Channels with no new posts sit under More. More opens as a menu; the channel the user
   // picks from it is pinned into the list until another channel opens.
   const moreOpen = signal(false);
@@ -322,7 +331,6 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
       })
       .catch((e) => {
         if (request !== listRequest) return;
-        dbg("threads failed", key, "page", n, String(e));
         if (n === 1) {
           notify("list", "Couldn't load threads. Tap to retry.", () => {
             listLoading.set(true);
@@ -393,6 +401,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   }
 
   function showFavorites() {
+    composing.set(false);
     collapseMore();
     searchTerm.set(null);
     searchOpen.set(false);
@@ -408,6 +417,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   }
 
   function showMine() {
+    composing.set(false);
     collapseMore();
     searchTerm.set(null);
     searchOpen.set(false);
@@ -422,6 +432,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   }
 
   function showReplies() {
+    composing.set(false);
     collapseMore();
     searchTerm.set(null);
     searchOpen.set(false);
@@ -436,6 +447,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   }
 
   function showMessages() {
+    composing.set(false);
     collapseMore();
     searchTerm.set(null);
     searchOpen.set(false);
@@ -451,6 +463,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   }
 
   function openChannel(c: Channel) {
+    composing.set(false);
     collapseMore();
     searchTerm.set(null);
     searchOpen.set(false);
@@ -467,6 +480,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   }
 
   function openThread(p: Post) {
+    composing.set(false);
     if (messages()) {
       detour.set([]);
       peer.set(p);
@@ -489,6 +503,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   // Shows the threads whose titles contain `term`, in the threads column. The channel or
   // favorites open before it stays selected in the column, and closing search returns to it.
   function openSearch(term: string) {
+    composing.set(false);
     const t = term.trim();
     if (!t) return;
     searchTerm.set(t);
@@ -522,10 +537,57 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
     }
   }
 
+  // `/` searches and `?` lists the shortcuts, from anywhere in the Forum (signed in only for `/`,
+  // as the search icon is). A key does not fire while a text field has the focus.
+  const openSearchFromKey = () => {
+    if (!props.user() || shortcutsOpen()) return;
+    if (!searchOpen()) searchProps.onOpen();
+    searchFocusTick.set(searchFocusTick() + 1);
+  };
+  keymap.bind("/", openSearchFromKey, { when: "notEditing" });
+  keymap.bind("shift+/", () => shortcutsOpen.set(!shortcutsOpen()), { when: "notEditing" });
+  // `n` and `p` open the next and the previous thread of the list, from the thread shown (the first
+  // or the last when none is shown). They wait while the shortcut list is open.
+  function stepThread(step: 1 | -1) {
+    if (shortcutsOpen()) return;
+    const list = posts();
+    if (list.length === 0) return;
+    const at = list.findIndex((p) => p.id === thread()?.id);
+    const next = at < 0 ? (step > 0 ? 0 : list.length - 1) : at + step;
+    if (next < 0 || next >= list.length) return;
+    openThread(list[next]);
+  }
+  keymap.bind("n", () => stepThread(1), { when: "notEditing" });
+  // A new thread goes into the channel open in the threads column: not into favorites, the user's own
+  // posts or replies, messages, or the results of a title search.
+  const canCompose = () => !!props.user() && !!channel() && !favorites() && !mine() && !replies() && !messages() && searchTerm() === null;
+  function openComposer() {
+    if (!canCompose() || shortcutsOpen()) return;
+    composing.set(true);
+  }
+  keymap.bind("c", openComposer, { when: "notEditing" });
+  // After a post: the channel's list reloads, and the new thread opens when the forum showed it.
+  function threadPosted(thread: Post | undefined) {
+    const c = channel();
+    composing.set(false);
+    if (c) openChannel(c);
+    if (thread) openThread(thread);
+  }
+  keymap.bind("p", () => stepThread(-1), { when: "notEditing" });
+  cleanup(
+    onEscape(() => {
+      if (!shortcutsOpen()) return false;
+      shortcutsOpen.set(false);
+      return true;
+    }),
+  );
+
   // The search control, in the title bar or, where the platform draws none, the threads column's header.
   const searchProps: SearchProps = {
     open: searchOpen,
     draft: searchDraft,
+    focusTick: () => searchFocusTick(),
+    term: () => searchTerm() ?? "",
     signedIn: () => !!props.user(),
     onDraft: (text: string) => searchDraft.set(text),
     // Submitting searches; the field hides once the results arrive with hits (see fetchList).
@@ -575,7 +637,11 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
       })
       .catch((e) => {
         if (request !== channelsRequest || quiet) return;
-        dbg("channels failed", String(e));
+        // Signed out, a failed channel list is not an error to report: the sign-in dialog is what is needed.
+        if (!props.user()) {
+          props.onSignInNeeded?.();
+          return;
+        }
         notify("channels", "Couldn't load channels. Tap to retry.", () => reloadChannels());
       })
       .finally(() => {
@@ -716,6 +782,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
               <View
                 onPress={channelsLoading() ? undefined : () => reloadChannels()}
                 accessibilityLabel="Refresh channels"
+                tooltip={hint("刷新版块")}
                 style={{ padding: 4, borderRadius: 6 }}
               >
                 <RefreshIcon size={14} enabled={!channelsLoading()} spinning={channelsLoading()} />
@@ -725,6 +792,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
               <View
                 onPress={toggleChannelsCollapsed}
                 accessibilityLabel={channelsCollapsed() ? "Expand channels" : "Collapse channels"}
+                tooltip={hint(channelsCollapsed() ? "展开版块" : "收起版块")}
                 style={{ padding: 4, borderRadius: 6 }}
               >
                 <SidebarIcon size={16} />
@@ -844,9 +912,15 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
             <Text style={{ fontSize: 15, color: palette().text, flex: 1 }}>{headerTitle()}</Text>
           )}
           {titleBarShown() ? null : <SearchControl {...searchProps} />}
+          {canCompose() ? (
+            <View onPress={openComposer} accessibilityLabel="New thread" tooltip={hint("写新帖子 (c)")} style={{ padding: 4, borderRadius: 6 }}>
+              <PencilIcon size={16} />
+            </View>
+          ) : null}
           <View
             onPress={refreshing() || (!favorites() && !mine() && !replies() && !messages() && !channel()) ? undefined : refreshThreads}
             accessibilityLabel="Refresh threads"
+            tooltip={hint("刷新帖子")}
             style={{ padding: 4, borderRadius: 6 }}
           >
             <RefreshIcon size={14} enabled={!refreshing() && (favorites() || mine() || replies() || messages() || !!channel())} spinning={refreshing()} />
@@ -902,7 +976,9 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
       {/* Column 3: the open thread. Under the title bar it extends up into the bar (a negative top margin),
           so the thread's title sits in the bar's caption area. */}
       <View style={{ flex: 1, alignSelf: "stretch", marginTop: titleBarShown() ? -titleBar().height : 0 }}>
-        {messages() && peer() && detour().length === 0 ? (
+        {composing() && canCompose() ? (
+          <NewThread fid={channel()!.id} channel={channel()!.title} onPosted={threadPosted} onClose={() => composing.set(false)} />
+        ) : messages() && peer() && detour().length === 0 ? (
           <Conversation peer={() => peer()!} onOpenThread={openLinkedThread} />
         ) : shownThread() ? (
           <Thread
@@ -912,6 +988,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
             signedIn={!!props.user()}
             onOpenThread={openLinkedThread}
             onBack={detour().length > 0 ? backFromLink : undefined}
+            shortcutsOpen={() => shortcutsOpen()}
             onUnfavorited={() => {
               // In the favorites list, the removed thread leaves the list.
               if (favorites() && detour().length === 0) posts.set(posts().filter((p) => p.id !== thread()?.id));
@@ -924,6 +1001,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
         )}
       </View>
       </View>
+      {shortcutsOpen() ? <ShortcutsHelp keys={shortcutsFor(shownThread() !== null)} onClose={() => shortcutsOpen.set(false)} /> : null}
     </View>
   );
 }

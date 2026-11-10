@@ -1,22 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#2F6BFF"/>
-      <stop offset="1" stop-color="#0B2A7A"/>
-    </linearGradient>
-    <linearGradient id="bubble" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFFFFF"/>
-      <stop offset="1" stop-color="#E6EEFF"/>
-    </linearGradient>
-    <linearGradient id="star" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFE27A"/>
-      <stop offset="1" stop-color="#FFB020"/>
-    </linearGradient>
+    <clipPath id="shape"><rect x="100" y="100" width="824" height="824" rx="185" ry="185"/></clipPath>
   </defs>
-  <!-- Apple-style rounded square: content inside an 824px box with 100px margin -->
-  <rect x="100" y="100" width="824" height="824" rx="185" ry="185" fill="url(#bg)"/>
-  <!-- Speech bubble (the forum's replies) -->
-  <path d="M250 330 Q250 270 310 270 L714 270 Q774 270 774 330 L774 555 Q774 615 714 615 L450 615 L330 730 L345 615 L310 615 Q250 615 250 555 Z" fill="url(#bubble)"/>
-  <!-- Star (a saved favorite / discovery) -->
-  <path id="s" fill="url(#star)" d="M512 340 L538 404 L607 410 L555 455 L571 522 L512 487 L453 522 L469 455 L417 410 L486 404 Z"/>
+  <g clip-path="url(#shape)">
+    <rect x="0" y="0" width="1024" height="1024" fill="#FFFFFF"/>
+    <rect x="0" y="0" width="583" height="1024" fill="#8E80B4"/>
+  </g>
+  <rect x="103" y="103" width="818" height="818" rx="182" ry="182" fill="none" stroke="#C4C4C4" stroke-width="6"/>
+  <g font-family="Georgia, Times New Roman, serif" font-weight="bold" font-size="250">
+    <text x="574" y="462" text-anchor="end" fill="#FFFFFF">Dis</text>
+    <text x="592" y="462" text-anchor="start" fill="#B8B8B8">co</text>
+    <text x="574" y="682" text-anchor="end" fill="#FFFFFF">-ve</text>
+    <text x="592" y="682" text-anchor="start" fill="#B8B8B8">ry</text>
+  </g>
 </svg>
