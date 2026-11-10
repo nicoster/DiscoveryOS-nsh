@@ -21,7 +21,9 @@
         "*.bytecdn.cn",
         "*.snssdk.com",
         "*.pstatp.com",
-        "*.zijieapi.com"
+        "*.zijieapi.com",
+        "github.com",
+        "*.githubusercontent.com"
       ]
     },
     "webview": {

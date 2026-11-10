@@ -1,7 +1,5 @@
 # Trusted update root
 
-`root.pub` is the public half of the root key that signs release certificates. The app verifies every
-hot-update package against it (`src/update.rs`).
-
-It is currently the **prototype test root**, generated with `nsh keygen` for the hot-update prototype.
-Replace it with the real offline root's public key before any release; never commit the `.secret` file.
+`root.pub` is the public half of the offline root key. Every hot-update package must be signed by a release
+key that this root certified (`src/update.rs` verifies it). The root private key is never committed or given to CI;
+it stays offline on the signing machine. Release keys are certified with `nsh certify` (see docs/hot-update.md).

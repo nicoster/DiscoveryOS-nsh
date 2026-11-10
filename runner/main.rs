@@ -31,13 +31,20 @@ fn main() -> ExitCode {
         .and_then(|exe| exe.canonicalize().ok())
         .and_then(|exe| Some(exe.parent()?.parent()?.join("Resources/nsh")))
         .unwrap_or_default();
-    // SAFETY: the embedded bytecode is a resource of this app bundle, covered by its signature.
-    let bundle = match unsafe { Bundle::read_trusted(&dir.join("bundle.nshc")) } {
-        Ok(bundle) => bundle,
-        Err(err) => {
-            eprintln!("cannot read the app bundle in {}: {err}", dir.display());
-            return ExitCode::FAILURE;
+    // The package kept from an earlier update when it still verifies, else the bundle shipped in the app.
+    let bundle = match update::startup_package() {
+        Some((bundle, build)) => {
+            update::ACTIVE_BUILD.store(build, std::sync::atomic::Ordering::SeqCst);
+            bundle
         }
+        // SAFETY: the embedded bytecode is a resource of this app bundle, covered by its signature.
+        None => match unsafe { Bundle::read_trusted(&dir.join("bundle.nshc")) } {
+            Ok(bundle) => bundle,
+            Err(err) => {
+                eprintln!("cannot read the app bundle in {}: {err}", dir.display());
+                return ExitCode::FAILURE;
+            }
+        },
     };
     let options = AppOptions {
         asset_base: Some(AssetBase::Directory(dir.join("assets"))),
@@ -90,8 +97,9 @@ fn main() -> ExitCode {
 /// Runs on the main thread: verifies the package again, builds its bundle, and swaps the view.
 fn swap(bytes: Vec<u8>) {
     match update::bundle_from_package(&bytes) {
-        Ok(bundle) => VIEW.with(|slot| {
+        Ok((bundle, build)) => VIEW.with(|slot| {
             if let Some(view) = slot.borrow().as_ref() {
+                update::ACTIVE_BUILD.store(build, std::sync::atomic::Ordering::SeqCst);
                 view.load(App::Js(bundle));
             }
         }),

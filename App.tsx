@@ -10,6 +10,7 @@ import { notify, Toaster } from "./src/ui/toast";
 import { ThemeIcon } from "./src/ui/icons";
 import { hint } from "./src/ui/Hint";
 import { hideSystemTitleBar } from "./src/ui/TitleBar";
+import { startUpdateCheck } from "./src/update";
 import { appearanceMode, appearanceName, cycleAppearance, palette, restoreAppearance, type AppearanceMode } from "./src/ui/appearance";
 
 // Port of `LoginView` (`Views/MainView.swift`) and `CurrentUserStore`: the forum is
@@ -461,3 +462,4 @@ function App() {
 
 hideSystemTitleBar();
 mount(App);
+startUpdateCheck();

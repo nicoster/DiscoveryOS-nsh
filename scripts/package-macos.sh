@@ -14,5 +14,12 @@ exe_name=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$app/Contents
 
 cargo build --release --manifest-path runner/Cargo.toml
 cp runner/target/release/DiscoveryOS "$app/Contents/MacOS/$exe_name"
-codesign --force --sign - "$app"
-echo "packaged $app with the hot-update runner"
+# Sign with a stable identity when one is given (see README): macOS keeps Keychain approvals
+# for the signing certificate, so they survive rebuilds. Ad-hoc signing ("-") changes the
+# app's identity on every build, and macOS asks for the Keychain again each time.
+identity="${SIGN_IDENTITY:--}"
+if [ "$identity" = "-" ]; then
+  echo "warning: signing ad-hoc; set SIGN_IDENTITY to a stable certificate to stop Keychain prompts" >&2
+fi
+codesign --force --sign "$identity" "$app"
+echo "packaged $app with the hot-update runner (signed: $identity)"
