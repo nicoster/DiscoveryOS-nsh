@@ -1,0 +1,29 @@
+src/update.ts
+  s_99770a44b7937f::t_bda7af60348fa7 1-2
+  s_99770a44b7937f::t_5d87e3b81e74bf 4,62-66,73-85,89-90,97,102-105
+src/ui/download.svg
+  s_99770a44b7937f::t_21924ce2c5b78c 1-5
+src/ui/icons.tsx
+  s_99770a44b7937f::t_26eabdf85f370b 12,15-18
+  s_99770a44b7937f::t_cf749817389a46 19
+.github/workflows/hot-update-package.yml
+  s_99770a44b7937f::t_2f45baba48c188 19-22
+App.tsx
+  s_99770a44b7937f::t_2dc650810f7ddf 10,13,275-286,346-352
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "80d14e3ff4e5552d1c28a5aaf6a5d36ac3c15e9b",
+  "prompts": {},
+  "sessions": {
+    "s_99770a44b7937f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4be82022-1c73-4cca-845f-8fa2df77f986",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
