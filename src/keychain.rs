@@ -1,6 +1,9 @@
 //! The Keychain, for the saved login (`CurrentUserStore.swift`: a generic
 //! password under the service `com.nickr.discoveryOS`). NSH's `Storage` is the
 //! app's own data and has no secrets store, so this goes through Rust.
+//!
+//! macOS uses the login Keychain; Windows uses the Credential Manager (a
+//! per-user generic credential). The JS API is the same on both.
 
 use nsh_core::prelude::*;
 
@@ -50,9 +53,93 @@ mod imp {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "windows")]
 mod imp {
-    const MSG: &str = "the Keychain is only available on macOS";
+    use super::service;
+    use std::ptr;
+    use windows_sys::Win32::Foundation::{ERROR_NOT_FOUND, GetLastError};
+    use windows_sys::Win32::Security::Credentials::{
+        CRED_PERSIST_LOCAL_MACHINE, CRED_TYPE_GENERIC, CREDENTIALW, CredDeleteW, CredFree, CredReadW, CredWriteW,
+    };
+
+    /// Credential Manager caps a generic credential's blob at 2560 bytes.
+    const MAX_BLOB: usize = 2560;
+
+    /// The target name: `service:account`, UTF-16 and NUL-terminated.
+    fn target(account: &str) -> Vec<u16> {
+        format!("{}:{}", service(), account).encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    fn last_error(what: &str) -> String {
+        // SAFETY: GetLastError has no preconditions.
+        format!("{what} failed (Win32 error {})", unsafe { GetLastError() })
+    }
+
+    pub fn save(account: &str, secret: &str) -> Result<(), String> {
+        let blob = secret.as_bytes();
+        if blob.len() > MAX_BLOB {
+            return Err(format!("secret is {} bytes; Credential Manager holds at most {MAX_BLOB}", blob.len()));
+        }
+        let mut name = target(account);
+        let cred = CREDENTIALW {
+            Flags: 0,
+            Type: CRED_TYPE_GENERIC,
+            TargetName: name.as_mut_ptr(),
+            Comment: ptr::null_mut(),
+            LastWritten: windows_sys::Win32::Foundation::FILETIME { dwLowDateTime: 0, dwHighDateTime: 0 },
+            CredentialBlobSize: blob.len() as u32,
+            CredentialBlob: blob.as_ptr() as *mut u8,
+            Persist: CRED_PERSIST_LOCAL_MACHINE,
+            AttributeCount: 0,
+            Attributes: ptr::null_mut(),
+            TargetAlias: ptr::null_mut(),
+            UserName: ptr::null_mut(),
+        };
+        // SAFETY: `cred` and the buffers it points to (`name`, `blob`) outlive the call.
+        if unsafe { CredWriteW(&cred, 0) } == 0 {
+            return Err(last_error("CredWriteW"));
+        }
+        Ok(())
+    }
+
+    pub fn load(account: &str) -> Result<Option<String>, String> {
+        let name = target(account);
+        let mut out: *mut CREDENTIALW = ptr::null_mut();
+        // SAFETY: on success CredReadW allocates `out`, which is freed below.
+        if unsafe { CredReadW(name.as_ptr(), CRED_TYPE_GENERIC, 0, &mut out) } == 0 {
+            // SAFETY: GetLastError has no preconditions.
+            if unsafe { GetLastError() } == ERROR_NOT_FOUND {
+                return Ok(None);
+            }
+            return Err(last_error("CredReadW"));
+        }
+        // SAFETY: `out` is valid until CredFree; the blob is copied before freeing.
+        let bytes = unsafe {
+            let c = &*out;
+            std::slice::from_raw_parts(c.CredentialBlob, c.CredentialBlobSize as usize).to_vec()
+        };
+        // SAFETY: `out` came from CredReadW and is freed exactly once.
+        unsafe { CredFree(out as *const _) };
+        String::from_utf8(bytes).map(Some).map_err(|e| e.to_string())
+    }
+
+    pub fn delete(account: &str) -> Result<(), String> {
+        let name = target(account);
+        // SAFETY: `name` is a valid NUL-terminated UTF-16 string for the call.
+        if unsafe { CredDeleteW(name.as_ptr(), CRED_TYPE_GENERIC, 0) } == 0 {
+            // SAFETY: GetLastError has no preconditions.
+            if unsafe { GetLastError() } == ERROR_NOT_FOUND {
+                return Ok(());
+            }
+            return Err(last_error("CredDeleteW"));
+        }
+        Ok(())
+    }
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+mod imp {
+    const MSG: &str = "the Keychain is not available on this platform";
 
     pub fn save(_: &str, _: &str) -> Result<(), String> {
         Err(MSG.to_owned())
