@@ -1,6 +1,6 @@
 // The forum pages: the channel list and a channel's thread list.
 import { currentFormHash, currentUser, request } from "./client";
-import { parseBookmarks, parseChannels, parseMyReplies, parseMyThreads, parsePmConversation, parsePmUsers, parsePosts, parseReplies, parseSearchResults, parseThreadPageInfo, parseUser, type Author, type Channel, type PmMessage, type Post, type Reply } from "./parse";
+import { parseBookmarks, parseChannels, parseMyReplies, parseMyThreads, parsePmConversation, parsePmUsers, parsePosts, parseProfile, parseReplies, parseSearchResults, parseThreadPageInfo, parseUser, type Author, type Channel, type PmMessage, type Post, type Profile, type Reply } from "./parse";
 import { formEncodeGb, htmlEntities } from "./encoding";
 import { dbg } from "../debugConsole";
 
@@ -112,4 +112,10 @@ export async function removeBookmark(tid: string): Promise<boolean> {
 export async function loadUser(name: string): Promise<Author | undefined> {
   const html = await request("GET", "space.php", { query: [["username", name]] });
   return parseUser(html, name);
+}
+
+/** The user's profile page: the account menu's fields and avatar. */
+export async function loadProfile(name: string): Promise<Profile> {
+  const html = await request("GET", "space.php", { query: [["username", name]] });
+  return parseProfile(html, name);
 }

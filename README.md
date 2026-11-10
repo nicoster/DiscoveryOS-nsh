@@ -56,7 +56,7 @@ cannot reach on its own: GB18030 conversion (the forum's character set) and the 
 nsh run                      # run on this machine
 nsh check                    # cargo check of the crate, then type checks App.tsx
 nsh test                     # cargo test, then the TSX tests, headless
-nsh package --target macos   # build a package for macOS
+nsh package --target macos --icon icon.png   # build a package for macOS, with the app icon
 ```
 
 `nsh` builds the Rust crate and bundles the TSX. TSX edits are hot updates; Rust edits rebuild and restart the app.

@@ -6,8 +6,10 @@ use nsh_base::theme;
 use nsh_core::prelude::*;
 
 mod codec;
+mod files;
 mod keychain;
 pub use codec::Gb18030;
+pub use files::Files;
 pub use keychain::Keychain;
 
 /// The crate's UI set (`nsh.json` `"rust"`).
@@ -17,6 +19,7 @@ fn native(registry: &mut Registry) {
         .register::<Badge>()
         .module::<Format>()
         .module::<Gb18030>()
+        .module::<Files>()
         .module::<Keychain>()
         .class::<Counter>();
 }

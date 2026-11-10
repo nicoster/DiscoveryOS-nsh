@@ -301,6 +301,52 @@ export function parseUser(html: string, name: string): Author | undefined {
   return { id: col[0], name, avatar: col[1] };
 }
 
+/** What a user's profile page says about them, for the account menu. A field the page lacks is absent. */
+export type Profile = {
+  avatar?: string;
+  group?: string;
+  registered?: string;
+  lastVisit?: string;
+  lastPost?: string;
+  postLevel?: string;
+  readPermission?: string;
+  posts?: string;
+  dailyPosts?: string;
+  essence?: string;
+  pageViews?: string;
+  onlineTotal?: string;
+  onlineThisMonth?: string;
+  credits?: string;
+  prestige?: string;
+  money?: string;
+};
+
+/** The profile page's fields (`space.php?username=`), each read from its own line. */
+export function parseProfile(html: string, name: string): Profile {
+  const field = (pattern: string): string | undefined => {
+    const value = captureGroups(html, pattern, true)[0]?.trim();
+    return value ? htmlDecode(value) : undefined;
+  };
+  return {
+    avatar: parseUser(html, name)?.avatar,
+    group: field('用户组: <a[^>]*>([^<]+)</a>'),
+    registered: field('<li>注册日期: ([^<]+)</li>'),
+    lastVisit: field('<li>上次访问: ([^<]+)</li>'),
+    lastPost: field('<li>最后发表: ([^<]+)</li>'),
+    postLevel: field('<li>发帖数级别: ([^<]*?)\\s*(?:<img[^>]*>\\s*)?</li>'),
+    readPermission: field('<li>阅读权限: ([^<]+)</li>'),
+    posts: field('<li>帖子: (\\d+) 篇'),
+    dailyPosts: field('平均每日发帖: ([^<]+?) 篇'),
+    essence: field('<li>精华: (\\d+) 篇'),
+    pageViews: field('<li>页面访问量: (\\d+)'),
+    onlineTotal: field('总计在线 <em>([^<]+)</em> 小时'),
+    onlineThisMonth: field('本月在线 <em>([^<]+)</em> 小时'),
+    credits: field('<h3 class="blocktitle lightlink">积分: (\\d+)</h3>'),
+    prestige: field('威望: (\\d+)'),
+    money: field('金钱: (\\d+)'),
+  };
+}
+
 /**
  * A page's HTML as plain text, for quoting (the Swift app quotes Markdown). Whitespace
  * reads as a browser shows it: the line breaks and indentation in the markup are spaces,
@@ -417,7 +463,8 @@ export function fixImages(html: string): string {
   const flat = html.replace(/<(table|tr|td|th)\b[^>]*>/gi, "<div>").replace(/<\/(table|tr|td|th)>/gi, "</div>");
   const visible = flat
     .replace(/<span\b[^>]*display:\s*none[^>]*>[\s\S]*?<\/span>/gi, "")
-    .replace(/<div class="t_attach"[\s\S]*?<\/div>\s*<\/div>/gi, "");
+    // A block that links a file is kept: the file's link is how the post offers it.
+    .replace(/<div class="t_attach"[\s\S]*?<\/div>\s*<\/div>/gi, (block) => (attachmentLinks(block).length > 0 ? block : ""));
   // A script-only link around a picture is just the picture.
   const unwrapped = visible.replace(/<a\b[^>]*href="javascript:[^"]*"[^>]*>\s*(<img\b[^>]*>)\s*<\/a>/gi, "$1");
   return unwrapped.replace(/<img\b([^>]*)>/gi, (whole, attrs: string) => {
@@ -443,6 +490,44 @@ export function fixImages(html: string): string {
     kept = kept.replace(/\s(width|height)="[^"]*"/gi, "").replace(/\s+/g, " ").trim();
     return `<p><img src="${picture}"${kept ? " " + kept : ""} width="100%"></p>`;
   });
+}
+
+/** A post's file attachment: the link's address (as the page has it) and the file name it shows. */
+export type Attachment = { url: string; name: string };
+
+// `<a href="…">name</a>` whose text has no picture in it.
+const LINK_WITH_TEXT = /<a\b[^>]*?\bhref="([^"]*)"[^>]*>((?:(?!<img\b)[\s\S])*?)<\/a>/gi;
+
+/**
+ * The file attachments a post links to. Discuz links each one to its download page
+ * (`attachment.php?aid=` or `forum.php?mod=attachment&aid=`), named by its link text. A
+ * picture's link wraps an `<img>`, so it is not a file and is left to `fixImages`.
+ */
+export function attachmentLinks(html: string): Attachment[] {
+  const files: Attachment[] = [];
+  for (const [, href, inner] of html.matchAll(LINK_WITH_TEXT)) {
+    const url = htmlDecode(href);
+    if (!isAttachmentUrl(url)) continue;
+    const name = htmlDecode(inner.replace(/<[^>]*>/g, "")).trim();
+    if (name) files.push({ url, name });
+  }
+  return files;
+}
+
+/**
+ * Whether a link is a Discuz attachment download on `4d4y.com` (or a subdomain), over http
+ * or https. A relative link is the forum's own (resolved against `HOST_BASE`).
+ */
+export function isAttachmentUrl(href: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(href, HOST_BASE);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+  if (url.hostname !== "4d4y.com" && !url.hostname.endsWith(".4d4y.com")) return false;
+  return /(^|\/)(attachment|attach)\.php$/.test(url.pathname) || url.searchParams.get("mod") === "attachment";
 }
 
 /** The forum's base URL, for relative paths (`DiscuzAPI.host`). */

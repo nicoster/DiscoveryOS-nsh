@@ -122,6 +122,41 @@ test("reads a user's uid and avatar", () => {
   expect(parseUser(html, "Dan")).toEqual({ id: "88", name: "Dan", avatar: "avatar/88.jpg" });
 });
 
+test("reads a profile page's fields for the account menu", () => {
+  const html =
+    '<h1>nicoster</h1><li>(UID: 205208)</li><div class="avatar"><img src="avatar/205208.jpg"></div>' +
+    '<h3 class="blocktitle lightlink">用户组: <a href="faq.php">初级会员</a> <img src="x.gif" /> </h3>' +
+    '<ul><li>注册日期: 2005-8-4</li><li>上次访问: 2026-11-10 09:33</li><li>最后发表: 2026-11-10 08:41</li>' +
+    '<li>注册 IP: 219.144.180.15 - </li><li>上次访问 IP: 10.100.96.151 - </li></ul>' +
+    '<ul><li>发帖数级别: 太健谈了 <img src="star.gif" /></li><li>阅读权限: 10</li>' +
+    '<li>帖子: 1116 篇(占全部帖子的 %)</li><li>平均每日发帖: 0.14 篇</li><li>精华: 0 篇</li>' +
+    '<li>页面访问量: 416227</li></ul>' +
+    '<p>在线时间: 总计在线 <em>3943.33</em> 小时, 本月在线 <em>9.33</em> 小时 </p>' +
+    '<h3 class="blocktitle lightlink">积分: 0</h3><p>威望: 0 ,&nbsp;金钱: 0 </p>';
+  expect(parseProfile(html, "nicoster")).toEqual({
+    avatar: "avatar/205208.jpg",
+    group: "初级会员",
+    registered: "2005-8-4",
+    lastVisit: "2026-11-10 09:33",
+    lastPost: "2026-11-10 08:41",
+    postLevel: "太健谈了",
+    readPermission: "10",
+    posts: "1116",
+    dailyPosts: "0.14",
+    essence: "0",
+    pageViews: "416227",
+    onlineTotal: "3943.33",
+    onlineThisMonth: "9.33",
+    credits: "0",
+    prestige: "0",
+    money: "0",
+  });
+});
+
+test("leaves out a profile field the page does not show", () => {
+  expect(parseProfile("<p>nothing here</p>", "Dan")).toEqual({});
+});
+
 test("quotes a reply as Discuz BBCode", () => {
   const reply = {
     id: "555",

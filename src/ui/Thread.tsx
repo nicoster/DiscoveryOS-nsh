@@ -3,8 +3,10 @@
 import { List, signal, Storage, Text, View, type PasteEvent } from "nsh";
 import { TextView } from "nsh/base";
 import { HOST, postReply, ReplyRefused, uploadAttachment } from "../discuz/client";
+import { Files } from "discoveryos/native";
 import { bookmarkPost, loadReplyPage, removeBookmark } from "../discuz/forum";
-import { absolutize, absoluteUrl, buildQuote, fixImages, mergePage, threadIdFromLink, trimLeadingBlanks, type Post, type Reply } from "../discuz/parse";
+import { absolutize, absoluteUrl, attachmentLinks, buildQuote, fixImages, isAttachmentUrl, mergePage, threadIdFromLink, trimLeadingBlanks, type Post, type Reply } from "../discuz/parse";
+import { downloadAttachment } from "./downloads";
 import { dbg } from "../debugConsole";
 import { timeAgo } from "../discuz/timeAgo";
 import { LoadingBar } from "./LoadingBar";
@@ -16,6 +18,12 @@ import { ReplyCard } from "./ReplyCard";
 import { ReplyBox, type Attached } from "./ReplyBox";
 import { canSendReply } from "./replyGate";
 import { pixelSize, type PixelSize } from "./pixelSize";
+import { bilibiliVideoIds } from "../bilibili/links";
+import { BiliPlayer } from "./BiliPlayer";
+import { douyinVideoIds } from "../douyin/links";
+import { DouyinPlayer } from "./DouyinPlayer";
+import { xiaohongshuNoteLinks } from "../xiaohongshu/links";
+import { XhsCard } from "./XhsCard";
 
 // A picture by its name or its type; anything else is a file.
 const isPicture = (name: string, type: string) => type.startsWith("image/") || /\.(png|jpe?g|gif|webp|heic)$/i.test(name);
@@ -165,16 +173,21 @@ export function Thread(props: {
 
   // A paste's images: the image files (a screenshot, an image copied from a page
   // or app) and the image files copied in a file manager, read from their `file:` URLs.
-  // Reads the files at these `file:` URLs. A file copied in Finder comes as a file reference
-  // that cannot be read here; a dropped file's own path can.
+  // Reads the files at these `file:` URLs. The system resolves a file copied in Finder (a file
+  // reference) to its path, and the native module reads it; a dropped file's URL is its path.
   async function readUris(uris: string[]): Promise<File[]> {
     const files: File[] = [];
     for (const uri of uris) {
-      const name = decodeURIComponent(uri.split("/").pop() ?? "");
-      if (!name) continue;
+      const path = Files.path(uri);
+      const bytes = path ? Files.read(path) : null;
+      if (path && bytes) {
+        files.push(new File([bytes], path.split("/").pop() || "file", { type: "" }));
+        continue;
+      }
       try {
+        const name = decodeURIComponent(uri.split("/").pop() ?? "");
         const blob = await fetch(uri).then((r) => r.blob());
-        files.push(new File([blob], name, { type: blob.type || "application/octet-stream" }));
+        files.push(new File([blob], name, { type: blob.type || "" }));
       } catch (err) {
         dbg("read failed", uri, String(err));
         notify("paste-error", "Can't attach that file. Try dragging it into the box.");
@@ -266,15 +279,33 @@ export function Thread(props: {
               ) : null
             }
             body={
-              <TextView
-                html={absolutize(trimLeadingBlanks(fixImages(item().body)), HOST)}
-                styles={item().seq === 1 ? OP_TITLE_STYLES : undefined}
-                onLinkPress={(e) => {
-                  // A 4d4y thread link opens in this column; any other link is left as it was.
-                  const tid = threadIdFromLink(e.url);
-                  if (tid && props.onOpenThread) props.onOpenThread(tid);
-                }}
-              />
+              <View style={{ gap: 12, alignSelf: "stretch" }}>
+                <TextView
+                  html={absolutize(trimLeadingBlanks(fixImages(item().body)), HOST)}
+                  styles={item().seq === 1 ? OP_TITLE_STYLES : undefined}
+                  onLinkPress={(e) => {
+                    // A 4d4y thread link opens in this column; a file the post attaches is saved to Downloads;
+                    // any other link is left as it was.
+                    const tid = threadIdFromLink(e.url);
+                    if (tid && props.onOpenThread) {
+                      props.onOpenThread(tid);
+                    } else if (isAttachmentUrl(e.url)) {
+                      const file = attachmentLinks(item().body).find((a) => absoluteUrl(a.url, HOST) === e.url);
+                      void downloadAttachment(e.url, file?.name ?? "download");
+                    }
+                  }}
+                />
+                {/* Bilibili videos the post links to play under its text (the text view cannot show a player). */}
+                {bilibiliVideoIds(item().body).map((bvid) => (
+                  <BiliPlayer bvid={bvid} />
+                ))}
+                {douyinVideoIds(item().body).map((id) => (
+                  <DouyinPlayer id={id} />
+                ))}
+                {xiaohongshuNoteLinks(item().body).map((link) => (
+                  <XhsCard link={link} />
+                ))}
+              </View>
             }
           />
         )}

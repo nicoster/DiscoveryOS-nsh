@@ -4,6 +4,7 @@
 import { Storage } from "nsh";
 import { loadUser } from "./forum";
 import { absoluteUrl, HOST_BASE } from "./parse";
+import { fetchLogged } from "../net/traffic";
 
 const TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -27,10 +28,9 @@ export async function userAvatar(name: string): Promise<string | undefined> {
 export async function avatarPicture(url: string): Promise<string> {
   const cached = await readEntry<PictureEntry>(pictureKey(url));
   if (cached && fresh(cached)) return cached.data;
-  const response = await fetch(url);
+  const { response, bytes } = await fetchLogged(url);
   if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
   const type = response.headers.get("content-type") ?? "image/jpeg";
-  const bytes = new Uint8Array(await response.arrayBuffer());
   let binary = "";
   for (let i = 0; i < bytes.length; i += 0x8000) {
     binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));

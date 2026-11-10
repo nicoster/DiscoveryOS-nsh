@@ -1,12 +1,13 @@
-import { Image, mount, signal, Text, View, type JSX } from "nsh";
+import { createAnimatedValue, Image, mount, Overlay, signal, Text, View, type JSX, type YNode } from "nsh";
 import { Input } from "nsh/base";
 import { currentUser, login, logout, restoreSession } from "./src/discuz/client";
-import { loadUser } from "./src/discuz/forum";
+import { loadProfile } from "./src/discuz/forum";
+import type { Profile } from "./src/discuz/parse";
 import { clearCredentials, loadCredentials, saveCredentials } from "./src/discuz/credentials";
 import { hasSavedCookies } from "./src/discuz/cookies";
 import { Forum } from "./src/ui/Forum";
 import { notify, Toaster } from "./src/ui/toast";
-import { PowerIcon, ThemeIcon } from "./src/ui/icons";
+import { ThemeIcon } from "./src/ui/icons";
 import { hideSystemTitleBar } from "./src/ui/TitleBar";
 import { appearanceMode, appearanceName, cycleAppearance, palette, restoreAppearance, type AppearanceMode } from "./src/ui/appearance";
 
@@ -31,7 +32,7 @@ function Button(props: { label: string; disabled?: boolean; onPress: () => void 
   );
 }
 
-// The account row's icons: the theme's current setting, and the sign-out symbol.
+// The account row's theme control.
 
 function IconButton(props: { icon: JSX.Element; title: string; disabled?: boolean; onPress: () => void }) {
   return (
@@ -52,6 +53,66 @@ function IconButton(props: { icon: JSX.Element; title: string; disabled?: boolea
   );
 }
 
+// The account menu's profile rows, in order: the label, and the field it shows.
+const MENU_ROWS: [string, keyof Profile][] = [
+  ["Group", "group"],
+  ["Registered", "registered"],
+  ["Last visit", "lastVisit"],
+  ["Last post", "lastPost"],
+  ["Post level", "postLevel"],
+  ["Read permission", "readPermission"],
+  ["Posts", "posts"],
+  ["Daily posts", "dailyPosts"],
+  ["Essence", "essence"],
+  ["Page views", "pageViews"],
+  ["Online, total (h)", "onlineTotal"],
+  ["Online, this month (h)", "onlineThisMonth"],
+  ["Credits", "credits"],
+  ["Prestige", "prestige"],
+  ["Money", "money"],
+];
+
+function MenuRow(props: { label: string; value: string }) {
+  return (
+    <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
+      <Text style={{ fontSize: 12, color: palette().muted }}>{props.label}</Text>
+      <Text style={{ fontSize: 12, color: palette().text }}>{props.value}</Text>
+    </View>
+  );
+}
+
+// A row the account menu acts on: its label, lit with a tint while the pointer is over it.
+function MenuAction(props: { label: string; onPress: () => void }) {
+  const hover = createAnimatedValue(0);
+  return (
+    <View
+      onPress={props.onPress}
+      onHoverIn={() => {
+        hover.timing(1, { duration: 120 }).catch(() => undefined);
+      }}
+      onHoverOut={() => {
+        hover.timing(0, { duration: 120 }).catch(() => undefined);
+      }}
+      accessibilityLabel={props.label}
+      style={{ paddingVertical: 6, paddingHorizontal: 6, marginHorizontal: -6, borderRadius: 6 }}
+    >
+      <View
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          borderRadius: 6,
+          backgroundColor: palette().border,
+          opacity: hover.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] }),
+        }}
+      />
+      <Text style={{ fontSize: 13, color: palette().text }}>{props.label}</Text>
+    </View>
+  );
+}
+
 function App() {
   const user = signal<string | null>(currentUser());
   const name = signal("");
@@ -60,12 +121,39 @@ function App() {
   const avatar = signal<string | null>(null);
   // The sign-in dialog, opened from the blank avatar while signed out.
   const dialogOpen = signal(false);
+  // The account menu, opened from the avatar while signed in: the profile's fields and sign-out.
+  // `menuPanel` is the panel's node, which the outside-press overlay is anchored to.
+  const menuOpen = signal(false);
+  const profile = signal<Profile | null>(null);
+  const menuPanel = signal<YNode | null>(null);
+  // The sign-out confirmation, opened from the menu's Sign Out.
+  const confirmOpen = signal(false);
+
+  function refreshProfile(name: string) {
+    loadProfile(name)
+      .then((p) => {
+        avatar.set(p.avatar ?? null);
+        profile.set(p);
+      })
+      .catch(() => {
+        // No profile to show: the menu stops saying it is loading, and shows only Sign Out.
+        avatar.set(null);
+        profile.set({});
+      });
+  }
 
   function showProfile(name: string) {
     user.set(name);
-    loadUser(name)
-      .then((u) => avatar.set(u?.avatar ?? null))
-      .catch(() => avatar.set(null));
+    refreshProfile(name);
+  }
+
+  function openMenu() {
+    menuOpen.set(true);
+    refreshProfile(user() ?? "");
+  }
+
+  function closeMenu() {
+    menuOpen.set(false);
   }
 
   async function signIn() {
@@ -96,6 +184,8 @@ function App() {
     }
     clearCredentials();
     avatar.set(null);
+    profile.set(null);
+    menuOpen.set(false);
     user.set(null);
     name.set("");
     pass.set("");
@@ -119,6 +209,48 @@ function App() {
       .finally(() => busy.set(false));
   }
 
+  // The account menu, above the avatar: the signed-in user's profile fields, then Sign Out.
+  // Fields the page lacks are left out; until the profile arrives the menu says it is loading.
+  const accountMenu = (): JSX.Element => {
+    const p = profile();
+    return (
+      <View
+        ref={(n: YNode | null) => menuPanel.set(n)}
+        style={{
+          position: "absolute",
+          bottom: "100%",
+          left: 0,
+          marginBottom: 8,
+          width: 240,
+          padding: 12,
+          gap: 6,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: palette().border,
+          backgroundColor: palette().surface,
+        }}
+      >
+        <Text style={{ fontSize: 14, fontWeight: 600, color: palette().text }}>{user() ?? ""}</Text>
+        {p ? (
+          MENU_ROWS.map(([label, key]) => {
+            const value = p[key];
+            return value ? <MenuRow key={key} label={label} value={value} /> : null;
+          })
+        ) : (
+          <Text style={{ fontSize: 12, color: palette().muted }}>Loading…</Text>
+        )}
+        <View style={{ height: 1, backgroundColor: palette().border, marginVertical: 4 }} />
+        <MenuAction
+          label="Sign Out"
+          onPress={() => {
+            closeMenu();
+            confirmOpen.set(true);
+          }}
+        />
+      </View>
+    );
+  };
+
   // The account row and its controls sit at the bottom of the channel column,
   // as the Claude Code sidebar keeps its account at the bottom left. Signed out,
   // the row is a blank avatar that opens the sign-in dialog.
@@ -127,7 +259,29 @@ function App() {
     <View style={{ borderTopWidth: 1, borderColor: palette().border }}>
       <View style={{ padding: compact ? 6 : 10, flexDirection: compact ? "column" : "row", alignItems: "center", gap: 8 }}>
         {user() ? (
-          avatar() ? <Image src={avatar()!} style={{ width: 24, height: 24, borderRadius: 12 }} /> : null
+          // The avatar opens the account menu; the menu closes on a press outside it.
+          <View onPress={menuOpen() ? undefined : openMenu} accessibilityLabel="Account menu">
+            {avatar() ? (
+              <Image src={avatar()!} style={{ width: 24, height: 24, borderRadius: 12 }} />
+            ) : (
+              <View
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: palette().border,
+                  backgroundColor: palette().surface,
+                }}
+              />
+            )}
+            {menuOpen() ? accountMenu() : null}
+            {menuOpen() && menuPanel() ? (
+              <Overlay anchor={menuPanel()} onPressOutside={closeMenu}>
+                <View style={{ width: 0, height: 0 }} />
+              </Overlay>
+            ) : null}
+          </View>
         ) : (
           <View
             onPress={() => dialogOpen.set(true)}
@@ -144,7 +298,6 @@ function App() {
         )}
         {compact ? null : <Text style={{ fontSize: 13, color: palette().text, flex: 1 }}>{user() ?? ""}</Text>}
         <IconButton icon={<ThemeIcon size={16} mode={appearanceMode} />} title={`Theme: ${appearanceName(appearanceMode())}`} onPress={cycleAppearance} />
-        {user() ? <IconButton icon={<PowerIcon size={16} disabled={busy()} />} title="Sign Out" disabled={busy()} onPress={signOut} /> : null}
       </View>
     </View>
   );
@@ -200,6 +353,48 @@ function App() {
     </View>
   );
 
+  // The sign-out confirmation: a panel over the forum, with Cancel and Sign Out.
+  const signOutDialog: JSX.Element = (
+    <View
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "rgba(0,0,0,0.35)",
+      }}
+    >
+      <View
+        style={{
+          width: 280,
+          padding: 16,
+          gap: 10,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: palette().border,
+          backgroundColor: palette().surface,
+        }}
+      >
+        <Text style={{ fontSize: 15, fontWeight: 600, color: palette().text }}>Sign out?</Text>
+        <Text style={{ fontSize: 13, color: palette().text }}>{`Sign out of ${user() ?? "this account"}?`}</Text>
+        <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
+          <Button label="Cancel" onPress={() => confirmOpen.set(false)} />
+          <Button
+            label={busy() ? "Signing out…" : "Sign Out"}
+            disabled={busy()}
+            onPress={() => {
+              confirmOpen.set(false);
+              signOut();
+            }}
+          />
+        </View>
+      </View>
+    </View>
+  );
+
   return (
     <View
       style={{
@@ -217,6 +412,7 @@ function App() {
         <Forum user={user} footer={(compact) => accountFooter(compact)} />
       </View>
       {dialogOpen() ? signInDialog : null}
+      {confirmOpen() ? signOutDialog : null}
       <Toaster />
 
     </View>

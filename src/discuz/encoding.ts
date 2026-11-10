@@ -1,9 +1,10 @@
 // Discuz pages are GB18030 and form bodies go back as GB18030 (`DiscuzAPI.swift`
 // `urlencode(using: .gb_18030_2000)`). The codec is Rust (`src/codec.rs`).
 import { Gb18030 } from "discoveryos/native";
+import { fetchLogged } from "../net/traffic";
 
 // The browser-like User-Agent the Swift app sends (`DiscuzAPI.dorequest`).
-const USER_AGENT =
+export const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15";
 
 /** A GB18030 page as text, and the `Set-Cookie` values it came with. */
@@ -13,17 +14,21 @@ export async function fetchGbRequest(
   body?: string,
   cookie?: string,
 ): Promise<{ html: string; setCookies: string[] }> {
-  const response = await fetch(url, {
-    method,
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "User-Agent": USER_AGENT,
-      ...(cookie ? { Cookie: cookie } : {}),
+  const { response, bytes } = await fetchLogged(
+    url,
+    {
+      method,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": USER_AGENT,
+        ...(cookie ? { Cookie: cookie } : {}),
+      },
+      body,
     },
-    body,
-  });
+    (b) => Gb18030.decode(b),
+  );
   if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
-  const html = Gb18030.decode(new Uint8Array(await response.arrayBuffer()));
+  const html = Gb18030.decode(bytes);
   return { html, setCookies: response.headers.getSetCookie() };
 }
 
@@ -34,13 +39,17 @@ export async function postFormGb(
   form: FormData,
   cookie?: string,
 ): Promise<{ text: string; setCookies: string[] }> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "User-Agent": USER_AGENT, ...(cookie ? { Cookie: cookie } : {}) },
-    body: form,
-  });
+  const { response, bytes } = await fetchLogged(
+    url,
+    {
+      method: "POST",
+      headers: { "User-Agent": USER_AGENT, ...(cookie ? { Cookie: cookie } : {}) },
+      body: form,
+    },
+    (b) => Gb18030.decode(b),
+  );
   if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
-  const text = Gb18030.decode(new Uint8Array(await response.arrayBuffer()));
+  const text = Gb18030.decode(bytes);
   return { text, setCookies: response.headers.getSetCookie() };
 }
 

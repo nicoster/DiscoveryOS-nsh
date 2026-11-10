@@ -8,7 +8,42 @@
     "network": {
       "hosts": [
         "www.4d4y.com",
-        "*.4d4y.com"
+        "*.4d4y.com",
+        "*.bilibili.com",
+        "*.hdslb.com",
+        "*.bilivideo.com",
+        "*.douyin.com",
+        "*.iesdouyin.com",
+        "*.douyinvod.com",
+        "*.douyinpic.com",
+        "*.douyinstatic.com",
+        "*.byteimg.com",
+        "*.bytecdn.cn",
+        "*.snssdk.com",
+        "*.pstatp.com",
+        "*.zijieapi.com"
+      ]
+    },
+    "webview": {
+      "hosts": [
+        "*.bilibili.com",
+        "*.hdslb.com",
+        "*.bilivideo.com",
+        "*.douyin.com",
+        "*.iesdouyin.com",
+        "*.douyinvod.com",
+        "*.douyinpic.com",
+        "*.douyinstatic.com",
+        "*.byteimg.com",
+        "*.bytecdn.cn",
+        "*.snssdk.com",
+        "*.pstatp.com",
+        "*.zijieapi.com"
+      ]
+    },
+    "openUrl": {
+      "schemes": [
+        "https"
       ]
     }
   }
