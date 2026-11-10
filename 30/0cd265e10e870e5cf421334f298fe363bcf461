@@ -1,0 +1,19 @@
+.github/workflows/hot-update-package.yml
+  s_bfb9b1fe97d422::t_a0605692191580 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "300cd265e10e870e5cf421334f298fe363bcf461",
+  "prompts": {},
+  "sessions": {
+    "s_bfb9b1fe97d422": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b01dc240-608e-470a-bcff-33b1b21c3402",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
