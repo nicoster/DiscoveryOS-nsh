@@ -1,0 +1,21 @@
+src/discuz/parse.test.ts
+  s_8c2d1600963cdf::t_60a020493e7478 2
+App.tsx
+  s_8c2d1600963cdf::t_c82b1083c25fde 235-243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "def0750126f5266a2b2368c13fb1dad5a3c84e37",
+  "prompts": {},
+  "sessions": {
+    "s_8c2d1600963cdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98a4e086-470d-4aca-87bb-f821ee339a93",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
