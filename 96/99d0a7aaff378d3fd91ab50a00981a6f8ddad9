@@ -1,0 +1,50 @@
+src/update.rs
+  s_2575eb0d27fb41::t_a70b494016efde 3-10,13,23-28,34,46,54,63,67-68,74,83-84,90-92,98-120,122-127,133-149,165-185,190,192-200,202-206,217-228,231,235-246,253
+  s_2575eb0d27fb41::t_e2a7487ef0d379 19-20,40-45,47-53,55-62,75,85-89,93-97,121,150-151,154-162,188,247-250
+  s_2575eb0d27fb41::t_f5b5ff05aefb0f 14,76-77,82,163-164,189,251-252,254-255
+scripts/package-macos.sh
+  s_0d08722024c8b5::t_7561269030aae3 17-25
+src/update.ts
+  s_2575eb0d27fb41::t_efd780b1f4ebae 1-67
+  s_2575eb0d27fb41::t_2dddb4b3136091 68-87
+App.tsx
+  s_2575eb0d27fb41::t_2a55cf4c57de06 13,465
+Cargo.lock
+  s_2575eb0d27fb41::t_66dc8095335271 1553
+Cargo.toml
+  s_2575eb0d27fb41::t_4b90485489e0a0 15
+nsh.json
+  s_2575eb0d27fb41::t_07df823461fb3b 24-26
+runner/Cargo.lock
+  s_2575eb0d27fb41::t_09a2a10fc9a0f6 1648
+runner/main.rs
+  s_2575eb0d27fb41::t_1564857309b94c 34-38,40-47,100,102
+trust/README.md
+  s_2575eb0d27fb41::t_e1c22e606a5767 3-5
+trust/root.pub
+  s_2575eb0d27fb41::t_20327e863c39cf 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "9699d0a7aaff378d3fd91ab50a00981a6f8ddad9",
+  "prompts": {},
+  "sessions": {
+    "s_0d08722024c8b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3962e6f-d9bb-4d2e-b67b-5aff9168a6be",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_2575eb0d27fb41": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f2be40e-69d9-45ce-8d7d-ed025bf500ae",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
