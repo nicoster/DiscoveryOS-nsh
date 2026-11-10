@@ -1,0 +1,136 @@
+src/discuz/vault.ts
+  s_0d08722024c8b5::t_52094e1289de9a 1-48
+src/ui/history.ts
+  s_2e8207e4fb88ad::t_7582f79f27220d 1-64
+src/ui/Forum.tsx
+  s_2e8207e4fb88ad::t_da51ab7964e481 548-549
+  s_2e8207e4fb88ad::t_211ef530148ae8 968-985
+  s_2e8207e4fb88ad::t_5662b41d69566b 674
+  s_2e8207e4fb88ad::t_acbb1faa72e7ce 1016-1018
+  s_2e8207e4fb88ad::t_53a31fcae51a2f 680-681
+  s_2e8207e4fb88ad::t_d39548d90a97f1 24-25
+  s_2e8207e4fb88ad::t_eb4b56f5e96d84 1034,1050-1051,1054,1056-1058,1061
+  s_2e8207e4fb88ad::t_cdd49e001836cb 1049
+  s_2e8207e4fb88ad::t_a50c31f227b612 590-591
+  s_2e8207e4fb88ad::t_77e986f2c3cdea 428,444,458,473,529
+  s_2e8207e4fb88ad::t_d19de2eeb0e5fa 181-184
+  s_2e8207e4fb88ad::t_c5c5d9608935cb 545
+  s_2e8207e4fb88ad::t_c1c8e861318c64 484-519
+  s_2e8207e4fb88ad::t_439ff3eefc940a 43-46
+  s_2e8207e4fb88ad::t_ac15081043c5b0 1046-1048,1052-1053,1055,1059-1060,1062
+  s_2e8207e4fb88ad::t_51be31432da1ff 47-51
+  s_2e8207e4fb88ad::t_9cdd817a02164b 723
+  s_675d0ede43def0::t_ded60026de7f52 4,85,88,138,215,275,283,624,678-679,750,770,885,1005,1010
+src/ui/historyGroups.test.ts
+  s_2e8207e4fb88ad::t_361e396b282f6f 1-42
+src/ui/historyGroups.ts
+  s_2e8207e4fb88ad::t_e86df231c12966 1-51
+src/discuz/credentials.ts
+  s_0d08722024c8b5::t_0a96ac84dc1bc1 1-4,6,9,13,17
+src/discuz/cookies.ts
+  s_0d08722024c8b5::t_87c86de29c7680 1-5,14
+  s_0d08722024c8b5::t_bac56bf8869550 53,60
+runner/main.rs
+  s_2575eb0d27fb41::t_4b890e08ac662c 193-197
+  s_2575eb0d27fb41::t_0f704ce9757e16 9-13,89-90,103-192,198-224
+src/discuz/vault.test.ts
+  s_0d08722024c8b5::t_93b1e484136d31 1-19
+App.tsx
+  s_675d0ede43def0::t_f3d088cff7de2e 1,105,108,144,286,368,375
+Cargo.lock
+  s_2575eb0d27fb41::t_eebf749f7f94a0 91-105,175,186-195,204-209,273-278,351-356,381-391,420-428,890,1119,1173-1178,1244-1267,1461-1471,1507-1512,1636-1660,1693,1695,1697,1706,1712,1717,1719,1728,1730-1732,1741,1743,1745,1750,1752,1761,1769,1771,1781,1791,1793,1800,1805,1807,1826,1874-1882,1897,2523-2528,2574,3212-3217,3224-3229,3328-3371,3399-3433,3440-3457,3666-3676
+Cargo.toml
+  s_675d0ede43def0::t_babc6e6aeb5862 10-11,13
+nsh.json
+  s_2575eb0d27fb41::t_a0a7d1b2415100 13-14,57-64
+runner/Cargo.lock
+  s_2575eb0d27fb41::t_46151065b63277 91-99,112-120,190,201-210,219-224,294-299,305-318,392-397,422-432,461-469,797-814,971-981,988,1207-1217,1224-1278,1298,1352-1357,1423-1446,1636-1663,1674-1684,1704-1720,1749-1754,1767-1772,1894-1928,1961,1963,1965,1972-1975,1978,1982,1985-1986,1991,1993,2003,2005,2007-2008,2017,2019,2021,2026,2028,2037-2038,2041,2047,2049,2059,2061,2069,2071,2078,2083,2085,2094,2099,2101,2120,2131,2243-2254,2266,2275-2283,2298,2397,2407,2441-2453,2546-2551,2583-2584,2586-2603,2621-2626,2681-2686,2879-2962,3015-3020,3036-3041,3127-3132,3178,3495-3503,3536-3541,3638,3645,3671-3679,3686-3697,3747-3752,3872,3911-3925,3932-3937,4058-4134,4153-4319,4329-4395,4402-4429,4499-4507,4647-4657,4669-4674
+runner/Cargo.toml
+  s_675d0ede43def0::t_be0c810cae3780 14-16
+src/bilibili/links.test.ts
+  s_0f0172c61a38ed::t_8fb7c3cdf6ca41 2,6-24,28-29,34
+src/bilibili/links.ts
+  s_0f0172c61a38ed::t_9251e0c17d0654 1-3,5-9,14-56,58
+src/bilibili/resolve.ts
+  s_0f0172c61a38ed::t_882f4cdcf35eb8 1-19
+src/bilibili/video.ts
+  s_0f0172c61a38ed::t_9e2fad813dbcfd 5,13-16,18-19,24,26
+src/douyin/links.test.ts
+  s_0f0172c61a38ed::t_4f98c45816079f 2,6-24,28-29,34,37
+src/douyin/links.ts
+  s_0f0172c61a38ed::t_a3f07b333eb83b 1-3,5-6,11,14-53,55
+src/douyin/resolve.ts
+  s_0f0172c61a38ed::t_551937dc46d3cf 1-19
+src/ui/BiliLogin.tsx
+  s_675d0ede43def0::t_650058b86fa86c 3,14
+src/ui/BiliPlayer.tsx
+  s_675d0ede43def0::t_e0aa701773e3fd 3-5,11-13,15-30,35,37,44,48,51
+src/ui/DouyinPlayer.tsx
+  s_675d0ede43def0::t_07ddc91d24e1dc 4,6,13-27,30
+src/ui/NewThread.tsx
+  s_675d0ede43def0::t_bd83e77e9425f6 97
+src/ui/ReplyBox.tsx
+  s_675d0ede43def0::t_bf92923670339c 31,172,179
+src/ui/ReplyCard.tsx
+  s_675d0ede43def0::t_05264b490f4edf 22-23
+src/ui/ShortcutsHelp.tsx
+  s_675d0ede43def0::t_48ab374ed87b6c 3,38,54
+src/ui/Thread.tsx
+  s_675d0ede43def0::t_0465d44145cb25 3,21-24,173,276,318-319
+src/ui/ThreadRow.tsx
+  s_675d0ede43def0::t_a759efef60d0b8 28,31
+src/ui/TitleBar.tsx
+  s_675d0ede43def0::t_55cf61a670beec 6,17,71,73,119,145,154
+src/update.rs
+  s_2575eb0d27fb41::t_12a48262887105 11,24,27-30,110-122,146-147,259,262,276-336
+src/update.ts
+  s_2575eb0d27fb41::t_446e59a687ed21 13-17,82-86,90,94-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c229e134bbf4b9e1e6c587b9473deccb82370391",
+  "prompts": {},
+  "sessions": {
+    "s_0d08722024c8b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3962e6f-d9bb-4d2e-b67b-5aff9168a6be",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_0f0172c61a38ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6dfd34f4-1b97-4a3b-b70e-296cbc3fb9c2",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_2575eb0d27fb41": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f2be40e-69d9-45ce-8d7d-ed025bf500ae",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_2e8207e4fb88ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb9ab66e-39c6-48e2-ba54-ae9b9ee597b9",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    },
+    "s_675d0ede43def0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81e5d99c-d8fe-48c3-9bb9-4dad574ef7b9",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
