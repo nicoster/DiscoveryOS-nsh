@@ -8,6 +8,7 @@
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use nsh_core::prelude::*;
 use nsh_engine::package::{Revocations, TrustStore, VerifiedPackage};
@@ -20,8 +21,13 @@ const ROOT_PUB: &str = include_str!("../trust/root.pub");
 /// `build` is the build of the bundle shipped in the app.
 const EMBEDDED_NSH_JSON: &str = include_str!("../nsh.json");
 
+const APP_ID: &str = "com.nickr.DiscoveryOS";
 const PENDING: &str = "pending.nshpkg";
 const CURRENT: &str = "current.nshpkg";
+const CURRENT_INFO: &str = "current.info.json";
+
+/// What the last update check did, for About (set by TSX through `Updater.recordCheck`).
+static LAST_CHECK: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
 
 /// The build of the package the app runs after a swap or at startup (0: the embedded bundle).
 pub static ACTIVE_BUILD: AtomicU64 = AtomicU64::new(0);
@@ -101,6 +107,19 @@ impl Updater {
         }
     }
 
+    /// Records what the last update check did (shown in the About panel).
+    pub fn record_check(text: String) {
+        if let Ok(mut last) = LAST_CHECK.lock() {
+            *last = text;
+        }
+    }
+
+    /// What About shows: the embedded bundle, the running build and where it came from, and the details of
+    /// the kept package (JSON).
+    pub fn about_info() -> String {
+        about_json().to_string()
+    }
+
     /// Called by a running app once it is healthy: accepts the pending package (older builds are refused
     /// from now on, also after a restart) and keeps it to load at startup. "ok none" when nothing is pending.
     pub fn mark_healthy() -> String {
@@ -124,6 +143,8 @@ impl Updater {
             Ok(build) => match write_state_file(CURRENT, &bytes) {
                 Err(err) => format!("err {err}"),
                 Ok(()) => {
+                    let info = package_info(&bytes, now_secs());
+                    let _ = write_state_file(CURRENT_INFO, info.to_string().as_bytes());
                     let _ = std::fs::remove_file(&path);
                     format!("ok {build}")
                 }
@@ -235,8 +256,10 @@ fn trust_store() -> Result<TrustStore, String> {
 
 /// The updates directory: `<data dir>/updates`, created on demand.
 fn state_dir() -> Result<PathBuf, String> {
+    // The app's own data directory (`${dataDir}` in nsh.json's capabilities), not the shared root.
     let dir = nsh_engine::data_dir()
         .ok_or_else(|| "no data directory".to_string())?
+        .join(nsh_engine::app_dir_name(Some(APP_ID)))
         .join("updates");
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     Ok(dir)
@@ -248,6 +271,67 @@ fn write_state_file(name: &str, bytes: &[u8]) -> Result<(), String> {
     let tmp = dir.join(format!("{name}.tmp"));
     std::fs::write(&tmp, bytes).map_err(|e| e.to_string())?;
     std::fs::rename(&tmp, dir.join(name)).map_err(|e| e.to_string())
+}
+
+fn now_secs() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs())
+}
+
+/// The details of a package for About. Built from the verified package (`bytes` is checked again).
+fn package_info(bytes: &[u8], accepted_at: u64) -> serde_json::Value {
+    let Ok(trust) = trust_store() else {
+        return serde_json::Value::Null;
+    };
+    let Ok(verified) = open_package_full(&trust, bytes) else {
+        return serde_json::Value::Null;
+    };
+    serde_json::json!({
+        "id": verified.app.id,
+        "name": verified.app.name,
+        "version": verified.app.version,
+        "build": verified.app.build,
+        "sha256": verified.sha256,
+        "keyId": verified.key_id,
+        "signedAt": verified.created_at,
+        "acceptedAt": accepted_at,
+        "sourceBytes": verified.source.len(),
+        "bytecodeBytes": verified.bytecode().map_or(0, |b| b.len()),
+        "assetCount": verified.assets.len(),
+        "assetBytes": verified.assets.iter().map(|(_, data)| data.len()).sum::<usize>(),
+    })
+}
+
+/// What About shows (JSON): the running build and version, the kept package's details, and the last check.
+pub fn about_json() -> serde_json::Value {
+    let dir = state_dir().ok();
+    let kept = dir
+        .as_ref()
+        .and_then(|d| std::fs::read_to_string(d.join(CURRENT_INFO)).ok())
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok());
+    let pending = dir.as_ref().is_some_and(|d| d.join(PENDING).exists());
+    let source = if ACTIVE_BUILD.load(Ordering::SeqCst) > 0 { "package" } else { "embedded" };
+    let last_check = LAST_CHECK.lock().map(|last| last.clone()).unwrap_or_default();
+    let running_version = kept
+        .as_ref()
+        .and_then(|info| info["version"].as_str().map(str::to_owned))
+        .unwrap_or_else(embedded_version);
+    serde_json::json!({
+        "runningVersion": running_version,
+        "lastCheck": last_check,
+        "embeddedVersion": embedded_version(),
+        "embeddedBuild": embedded_build(),
+        "runningSource": source,
+        "runningBuild": current_build(),
+        "pendingSwap": pending,
+        "package": kept,
+    })
+}
+
+fn embedded_version() -> String {
+    serde_json::from_str::<serde_json::Value>(EMBEDDED_NSH_JSON)
+        .ok()
+        .and_then(|manifest| manifest["version"].as_str().map(str::to_owned))
+        .unwrap_or_default()
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {

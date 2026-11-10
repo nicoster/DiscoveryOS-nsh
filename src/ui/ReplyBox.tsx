@@ -28,7 +28,7 @@ function Thumb(props: { src: string; size: PixelSize | null }) {
   // The box fixes the size; the picture fills it, so its own pixel size never takes over the layout.
   return (
     <View style={{ width: box.width, height: box.height, borderRadius: 6, overflow: "hidden" }}>
-      <Image src={props.src} resizeMode="contain" style={{ width: box.width, height: box.height }} />
+      <Image src={props.src} style={{ width: box.width, height: box.height, objectFit: "contain" }} />
     </View>
   );
 }
@@ -169,14 +169,14 @@ export function ReplyBox(props: {
           placeholder={props.placeholder ?? "Reply"}
           multiline={true}
           value={props.draft()}
-          onChange={(text: string) => takeBack(text)}
+          onChange={({ value: text }: { value: string }) => takeBack(text)}
           onPaste={(e: PasteEvent) => {
             if (e.files.length > 0 || e.uris.length > 0) inserted = e.text || null;
             props.onPaste?.(e);
           }}
           onFocus={() => focused.set(true)}
           onBlur={() => focused.set(false)}
-          onContentSizeChange={(size: { height: number }) =>
+          onContentSizeChange={({ size }: { size: { height: number } }) =>
             fieldHeight.set(Math.min(ceiling, Math.max(floor, Math.ceil(size.height) + 8)))
           }
           style={{

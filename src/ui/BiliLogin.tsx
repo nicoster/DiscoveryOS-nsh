@@ -1,6 +1,6 @@
 // The Bilibili sign-in page in a WebView. The user signs in there (QR code or
 // password); the app only asks Bilibili afterwards whether the WebView is signed in.
-import { signal, Text, View, WebView, type YNode } from "nsh";
+import { signal, Text, View, WebView, type WebViewRef } from "nsh";
 import { CHECK_LOGIN_JS, parseLoginMessage, setBiliSignedIn } from "../bilibili/session";
 import { palette } from "./appearance";
 
@@ -11,7 +11,7 @@ const SAFARI_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/6
 
 export function BiliLogin(props: { onSignedIn: () => void }) {
   const status = signal("未检查");
-  let page!: YNode;
+  let page!: WebViewRef;
 
   return (
     <View style={{ gap: 8, alignSelf: "stretch" }}>

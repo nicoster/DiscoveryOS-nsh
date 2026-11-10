@@ -1,6 +1,6 @@
 // The post page's keyboard shortcuts, listed over the thread column when `?` is pressed, as
 // Gmail's list is. A press outside the list, Escape or `?` again closes it.
-import { Overlay, signal, Text, View, type YNode } from "nsh";
+import { Overlay, signal, Text, View, type ViewRef } from "nsh";
 import { palette } from "./appearance";
 
 export type Shortcut = { key: string; action: string };
@@ -35,7 +35,7 @@ export const shortcutsFor = (inThread: boolean): Shortcut[] => (inThread ? POST_
 
 export function ShortcutsHelp(props: { keys: Shortcut[]; onClose: () => void }) {
   // The card's place, which the outside-press overlay is anchored to.
-  const card = signal<YNode | null>(null);
+  const card = signal<ViewRef | null>(null);
   return (
     <>
       <View
@@ -51,7 +51,7 @@ export function ShortcutsHelp(props: { keys: Shortcut[]; onClose: () => void }) 
         }}
       >
         <View
-          ref={(n: YNode | null) => card.set(n)}
+          ref={(n: ViewRef | null) => card.set(n)}
           accessibilityLabel="Keyboard shortcuts"
           style={{
             width: 340,

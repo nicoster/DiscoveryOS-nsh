@@ -3,7 +3,7 @@
 // sidebar toggle at the left and search and close at the right. Where the platform draws
 // none (the web, phones, full screen), `titleBarShown` is false and the forum's column
 // headers hold these controls instead.
-import { cleanup, effect, LayoutAnimation, Overlay, reduceMotion, signal, Text, untracked, View, type YNode } from "nsh";
+import { cleanup, effect, LayoutAnimation, Overlay, reduceMotion, signal, Text, untracked, View, type ViewRef } from "nsh";
 import { Input } from "nsh/base";
 import { hint } from "./Hint";
 import { isAvailable, titleBar, Window } from "nsh/desktop";
@@ -14,7 +14,7 @@ import { SearchIcon, SidebarIcon } from "./icons";
 
 /** Hides the system's title bar, so the app draws its own (`TitleBar`). Call once at launch. */
 export function hideSystemTitleBar(): void {
-  if (isAvailable) Window.setTitleBar("hidden", 44);
+  if (isAvailable) Window.setTitleBar({ style: "hidden", height: 44 });
 }
 
 /** Fades the next change of the search field: 240 ms, opacity only, so nothing slides or moves while the
@@ -68,9 +68,9 @@ function Glyph(props: { label: string; title: string; onPress: () => void; size?
 /** The search field, opened from its icon: Return searches, ✕ closes it. */
 export function SearchControl(props: SearchProps) {
   // The field's place, which the outside-press overlay is anchored to.
-  const field = signal<YNode | null>(null);
+  const field = signal<ViewRef | null>(null);
   // The input's handle, focused when `focusTick` changes (after the field has been shown).
-  const input = signal<YNode | null>(null);
+  const input = signal<ViewRef | null>(null);
   // Whether the input has the keyboard focus (Escape then closes the field).
   const focused = signal(false);
   // The field is shown after a render, so its focus waits a turn.
@@ -116,7 +116,7 @@ export function SearchControl(props: SearchProps) {
           <SearchIcon size={16} />
           {/* Closed, the search the threads show stays beside the icon; a press on either reopens the field. */}
           {!props.open() && props.term().length > 0 ? (
-            <Text numberOfLines={1} style={{ fontSize: 13, color: palette().text, maxWidth: 200 }}>
+            <Text style={{ numberOfLines: 1, fontSize: 13, color: palette().text, maxWidth: 200 }}>
               {props.term()}
             </Text>
           ) : null}
@@ -142,7 +142,7 @@ export function SearchControl(props: SearchProps) {
         >
           <SearchIcon size={16} />
           <Input
-            ref={(n: YNode | null) => input.set(n)}
+            ref={(n: ViewRef | null) => input.set(n)}
             onFocus={() => focused.set(true)}
             onBlur={() => {
               // Losing the focus (to the reply box, a click elsewhere) hides the field, as Escape does.
@@ -151,7 +151,7 @@ export function SearchControl(props: SearchProps) {
             }}
             placeholder="Search threads"
             value={props.draft()}
-            onChange={(text: string) => props.onDraft(text)}
+            onChange={({ value: text }: { value: string }) => props.onDraft(text)}
             onSubmit={({ text }: { text: string }) => props.onSubmit(text)}
             returnKeyType="search"
             accessibilityLabel="Search threads"

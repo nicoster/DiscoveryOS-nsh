@@ -10,6 +10,8 @@
         "www.4d4y.com",
         "*.4d4y.com",
         "*.bilibili.com",
+        "b23.tv",
+        "bili2233.cn",
         "*.hdslb.com",
         "*.bilivideo.com",
         "*.douyin.com",
@@ -51,6 +53,14 @@
     "process": {
       "env": [
         "DEBUG"
+      ]
+    },
+    "fs": {
+      "read": [
+        "${dataDir}"
+      ],
+      "write": [
+        "${dataDir}"
       ]
     }
   }

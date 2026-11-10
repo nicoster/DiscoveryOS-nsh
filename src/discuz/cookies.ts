@@ -1,9 +1,8 @@
-// The session's cookies, kept in the Keychain so a launch resumes the login
-// without asking for the password again. Discuz sets its session (`*_auth`,
-// `*_saltkey`, ...) with `Set-Cookie`; we keep name=value pairs only.
-import { Keychain } from "discoveryos/native";
-
-const ACCOUNT = "session-cookies";
+// The session's cookies, kept in the Keychain (in the shared vault, `vault.ts`)
+// so a launch resumes the login without asking for the password again. Discuz
+// sets its session (`*_auth`, `*_saltkey`, ...) with `Set-Cookie`; we keep
+// name=value pairs only.
+import { loadVault, saveVault } from "./vault";
 
 const jar = new Map<string, string>();
 let loaded = false;
@@ -12,14 +11,7 @@ let loaded = false;
 function ensureLoaded(): void {
   if (loaded) return;
   loaded = true;
-  const raw = Keychain.load(ACCOUNT);
-  if (!raw) return;
-  try {
-    const entries = JSON.parse(raw) as Record<string, string>;
-    for (const [k, v] of Object.entries(entries)) jar.set(k, v);
-  } catch {
-    // A damaged entry is ignored; the next login writes a fresh one.
-  }
+  for (const [k, v] of Object.entries(loadVault().cookies)) jar.set(k, v);
 }
 
 /** The `Cookie` header for the stored cookies, or `undefined` when there are none. */
@@ -58,14 +50,14 @@ export function absorbSetCookie(setCookies: string[]): void {
 }
 
 function save(): void {
-  Keychain.save(ACCOUNT, JSON.stringify(Object.fromEntries(jar)));
+  saveVault({ ...loadVault(), cookies: Object.fromEntries(jar) });
 }
 
 /** Forgets all cookies, in memory and in the Keychain. */
 export function clearCookies(): void {
   jar.clear();
   loaded = true;
-  Keychain.delete(ACCOUNT);
+  saveVault({ ...loadVault(), cookies: {} });
 }
 
 /** Whether a session cookie was saved (a restore may skip the password). */

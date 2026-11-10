@@ -1,6 +1,6 @@
 // A thread's replies, pages, quote and reply draft (`PostDetailView` of the
 // Swift app). The draft is kept per thread in the app's storage.
-import { keymap, List, signal, Storage, Text, View, type PasteEvent, type YNode } from "nsh";
+import { keymap, List, signal, Storage, Text, View, type PasteEvent, type ListRef } from "nsh";
 import { TextView } from "nsh/base";
 import { HOST, postReply, ReplyRefused, uploadAttachment } from "../discuz/client";
 import { bookmarkPost, loadReplyPage, removeBookmark } from "../discuz/forum";
@@ -18,10 +18,10 @@ import { ReplyBox } from "./ReplyBox";
 import { attachmentTag, createAttachments } from "./attachments";
 import { hint } from "./Hint";
 import { canSendReply } from "./replyGate";
-import { bilibiliVideoIds } from "../bilibili/links";
-import { BiliPlayer } from "./BiliPlayer";
-import { douyinVideoIds } from "../douyin/links";
-import { DouyinPlayer } from "./DouyinPlayer";
+import { bilibiliRefs } from "../bilibili/links";
+import { BiliPlayer, BiliShortPlayer } from "./BiliPlayer";
+import { douyinRefs } from "../douyin/links";
+import { DouyinPlayer, DouyinShortPlayer } from "./DouyinPlayer";
 import { xiaohongshuNoteLinks } from "../xiaohongshu/links";
 import { XhsCard } from "./XhsCard";
 
@@ -170,7 +170,7 @@ export function Thread(props: {
   // The Forum's shortcut list, open over the window: the keys are off while it is.
   const keysOn = () => !props.shortcutsOpen?.();
   let replyField: { focus(): void } | undefined;
-  let repliesList: YNode | undefined;
+  let repliesList: ListRef | undefined;
   let gPending: ReturnType<typeof setTimeout> | undefined;
 
   keymap.bind(
@@ -273,7 +273,7 @@ export function Thread(props: {
         estimatedItemSize={180}
         onLoadMore={loadMore}
         footer={() => <View>{loadingMoreShown() ? <LoadingBar /> : null}</View>}
-        ref={(n: YNode | null) => {
+        ref={(n: ListRef | null) => {
           repliesList = n ?? undefined;
         }}
       >
@@ -315,12 +315,8 @@ export function Thread(props: {
                   }}
                 />
                 {/* Bilibili videos the post links to play under its text (the text view cannot show a player). */}
-                {bilibiliVideoIds(item().body).map((bvid) => (
-                  <BiliPlayer bvid={bvid} />
-                ))}
-                {douyinVideoIds(item().body).map((id) => (
-                  <DouyinPlayer id={id} />
-                ))}
+                {bilibiliRefs(item().body).map((ref) => ("url" in ref ? <BiliShortPlayer url={ref.url} /> : <BiliPlayer video={ref} />))}
+                {douyinRefs(item().body).map((ref) => ("url" in ref ? <DouyinShortPlayer url={ref.url} /> : <DouyinPlayer id={ref.id} />))}
                 {xiaohongshuNoteLinks(item().body).map((link) => (
                   <XhsCard link={link} />
                 ))}

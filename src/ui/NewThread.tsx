@@ -94,7 +94,7 @@ export function NewThread(props: {
       <Input
         placeholder="标题"
         value={subject()}
-        onChange={(text: string) => {
+        onChange={({ value: text }: { value: string }) => {
           subject.set(text);
           save();
         }}

@@ -1,26 +1,18 @@
-// The saved login (`CurrentUserStore`): kept in the Keychain as JSON. The Swift
-// app stored `user:pass` and split on `:`, which breaks a password with a colon.
-import { Keychain } from "discoveryos/native";
+// The saved login (`CurrentUserStore`). It lives in the shared vault item
+// (`vault.ts`) next to the session cookies. The Swift app stored `user:pass`
+// under its own item; that item is not read any more.
+import { loadVault, saveVault, type Credentials } from "./vault";
 
-const ACCOUNT = "cred";
-
-export type Credentials = { name: string; pass: string };
+export type { Credentials };
 
 export function loadCredentials(): Credentials | null {
-  const raw = Keychain.load(ACCOUNT);
-  if (!raw) return null;
-  try {
-    const v = JSON.parse(raw);
-    return typeof v?.name === "string" && typeof v?.pass === "string" ? v : null;
-  } catch {
-    return null;
-  }
+  return loadVault().creds;
 }
 
 export function saveCredentials(creds: Credentials): void {
-  Keychain.save(ACCOUNT, JSON.stringify(creds));
+  saveVault({ ...loadVault(), creds: { name: creds.name, pass: creds.pass } });
 }
 
 export function clearCredentials(): void {
-  Keychain.delete(ACCOUNT);
+  saveVault({ ...loadVault(), creds: null });
 }

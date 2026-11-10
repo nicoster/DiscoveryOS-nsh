@@ -1,4 +1,4 @@
-import { createAnimatedValue, Image, mount, Overlay, signal, Text, View, type JSX, type YNode } from "nsh";
+import { createAnimatedValue, Image, mount, Overlay, signal, Text, View, type JSX, type ViewRef } from "nsh";
 import { Input } from "nsh/base";
 import { currentUser, login, logout, restoreSession } from "./src/discuz/client";
 import { loadProfile } from "./src/discuz/forum";
@@ -102,10 +102,10 @@ function MenuAction(props: { label: string; onPress: () => void }) {
   return (
     <View
       onPress={props.onPress}
-      onHoverIn={() => {
+      onMouseEnter={() => {
         hover.timing(1, { duration: 120 }).catch(() => undefined);
       }}
-      onHoverOut={() => {
+      onMouseLeave={() => {
         hover.timing(0, { duration: 120 }).catch(() => undefined);
       }}
       accessibilityLabel={props.label}
@@ -141,7 +141,7 @@ function App() {
   // whole window (a sibling column drawn later would otherwise cover a menu that is only absolute).
   const menuOpen = signal(false);
   const profile = signal<Profile | null>(null);
-  const avatarNode = signal<YNode | null>(null);
+  const avatarNode = signal<ViewRef | null>(null);
   // The sign-out confirmation, opened from the menu's Sign Out.
   const confirmOpen = signal(false);
 
@@ -283,7 +283,7 @@ function App() {
           <>
             {/* The avatar opens the account menu; the menu closes on a press outside it. */}
             <View
-              ref={(n: YNode | null) => avatarNode.set(n)}
+              ref={(n: ViewRef | null) => avatarNode.set(n)}
               onPress={menuOpen() ? undefined : openMenu}
               accessibilityLabel="Account menu"
             >
@@ -365,14 +365,14 @@ function App() {
         <Input
           placeholder="Username"
           value={name()}
-          onChange={(text: string) => name.set(text)}
+          onChange={({ value: text }: { value: string }) => name.set(text)}
           style={{ height: 28, paddingHorizontal: 8, fontSize: 14 }}
         />
         <Input
           placeholder="Password"
           masked={true}
           value={pass()}
-          onChange={(text: string) => pass.set(text)}
+          onChange={({ value: text }: { value: string }) => pass.set(text)}
           // Return in the password field signs in, like the default button in the Swift sheet.
           onSubmit={() => {
             if (!busy() && name().length > 0 && pass().length > 0) void signIn();

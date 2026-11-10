@@ -19,8 +19,8 @@ export function ReplyCard(props: {
 }) {
   return (
     <View
-      onHoverIn={props.onHoverIn}
-      onHoverOut={props.onHoverOut}
+      onMouseEnter={props.onHoverIn}
+      onMouseLeave={props.onHoverOut}
       style={{
         flexDirection: "row",
         alignItems: "flex-start",

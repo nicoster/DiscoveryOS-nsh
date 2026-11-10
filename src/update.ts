@@ -10,6 +10,11 @@ export const UPDATE_MANIFEST_URL = "https://github.com/nicoster/DiscoveryOS-nsh/
 const TOAST = "update";
 const CHECK_DELAY_MS = 3000;
 
+/** Records what the last check did, for the About panel (kept by the native side). */
+function record(result: string): void {
+  Updater.recordCheck(`${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC · ${result}`);
+}
+
 export type Manifest = {
   id: string;
   build: number;
@@ -74,14 +79,21 @@ export function startUpdateCheck(): void {
     if (healthy.startsWith("err")) console.log(`update: ${healthy}`);
     checkForUpdate()
       .then((manifest) => {
-        if (!manifest) return;
+        if (!manifest) {
+          record("already up to date");
+          return;
+        }
+        record(`installing ${manifest.version} (build ${manifest.build})`);
         notify(TOAST, `正在更新到 ${manifest.version}…`);
         return installUpdate(manifest).then((result) => {
           if (result.startsWith("err")) throw new Error(result);
+          record(`swapped to build ${manifest.build}; accepted once healthy`);
         });
       })
       .catch((error: unknown) => {
-        console.log(`update: ${error instanceof Error ? error.message : String(error)}`);
+        const message = error instanceof Error ? error.message : String(error);
+        record(`failed: ${message}`);
+        console.log(`update: ${message}`);
       });
   }, CHECK_DELAY_MS);
 }

@@ -25,10 +25,10 @@ export function ThreadRow(props: {
   return (
     <View
       onPress={props.onPress}
-      onHoverIn={() => {
+      onMouseEnter={() => {
         hover.timing(1, { duration: 120 }).catch(() => undefined);
       }}
-      onHoverOut={() => {
+      onMouseLeave={() => {
         hover.timing(0, { duration: 120 }).catch(() => undefined);
       }}
       style={{
