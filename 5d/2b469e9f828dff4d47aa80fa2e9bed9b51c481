@@ -1,0 +1,46 @@
+src/ui/commands.ts
+  s_2a9cfbca73bc73::t_82b5a741b12951 9,11
+  s_2a9cfbca73bc73::t_40b1d57a2e2672 179,183-187,189-191,194-195
+  s_2a9cfbca73bc73::t_23af7ffb29d3af 188
+  s_2a9cfbca73bc73::t_5eeeb486c0d2e4 192-193
+  s_2a9cfbca73bc73::t_e018640cff072a 8
+  s_2a9cfbca73bc73::t_146e7a48bb9d25 6
+  s_2a9cfbca73bc73::t_1054be21d26fae 196
+App.tsx
+  s_2a9cfbca73bc73::t_5335f2f8576eac 480
+  s_2a9cfbca73bc73::t_8d5e285761543f 16-17
+nsh.json
+  s_2a9cfbca73bc73::t_12a9e007c9f4e8 53
+  s_2a9cfbca73bc73::t_e6607f12d5f695 56-57
+src/ui/CookieImport.tsx
+  s_2a9cfbca73bc73::t_4d0ad0c0c59daf 95-96
+  s_2a9cfbca73bc73::t_26b242ffee6129 45-53
+  s_2a9cfbca73bc73::t_9b3a6edc038be2 100
+  s_2a9cfbca73bc73::t_b7be53a024a99f 3
+  s_2a9cfbca73bc73::t_cdfc87d2d062b1 90
+  s_2a9cfbca73bc73::t_2ad253af137013 102
+  s_2a9cfbca73bc73::t_8af0097ed073e9 1-2,4-11,16-40,42-44,54,56-89,91-94,97-99,101,103-107
+  s_2a9cfbca73bc73::t_054746b33005cf 12-15
+  s_2a9cfbca73bc73::t_c8db01483d526c 41,55
+src/discuz/cookies.ts
+  s_2a9cfbca73bc73::t_d9bf8571b0fff4 5,8-10,14,19-67
+src/discuz/cookies.test.ts
+  s_2a9cfbca73bc73::t_5cfbd5689500b4 2-19
+  s_2a9cfbca73bc73::t_e4e982c7d59480 41-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5d2b469e9f828dff4d47aa80fa2e9bed9b51c481",
+  "prompts": {},
+  "sessions": {
+    "s_2a9cfbca73bc73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48623943-e00e-422b-b517-bd4e0fae7c37",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
