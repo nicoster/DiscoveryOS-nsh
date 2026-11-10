@@ -50,9 +50,11 @@
         "https"
       ]
     },
+    "clipboard": true,
     "process": {
       "env": [
-        "DEBUG"
+        "DEBUG",
+        "DISCUZ_COOKIES"
       ]
     },
     "fs": {

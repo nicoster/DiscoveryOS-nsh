@@ -3,9 +3,12 @@
 // types (`/`, `n`, `r`) is bound through the keymap and is left out of the native menu's shortcut
 // field, so the menu cannot fire it while a text field has the focus; chords with a modifier
 // (`mod+r`) are bound the same way, so every shortcut has one path.
-import { cleanup, effect, keymap, signal, untracked } from "nsh";
+import { Clipboard, cleanup, effect, keymap, signal, untracked } from "nsh";
 import { isAvailable, Menu, type MenuItem, type MenuRole } from "nsh/desktop";
+import { debugEnabled } from "../debugLog";
+import { exportCookies } from "../discuz/cookies";
 import { appearanceMode, appearanceName, chooseAppearance, type AppearanceMode } from "./appearance";
+import { openCookieImport } from "./CookieImport";
 
 export type CommandId =
   | "forum.search"
@@ -173,9 +176,23 @@ function menuBar(): MenuItem[] {
     ]),
     submenu("View", [submenu("Appearance", APPEARANCES.map(appearanceItem))]),
     submenu("Window", [role("minimize"), role("zoom"), role("toggleFullScreen"), SEPARATOR, role("close")]),
-    submenu("Help", [item("forum.shortcuts")]),
+    submenu("Help", [item("forum.shortcuts"), ...(debugEnabled ? [SEPARATOR, ...debugItems()] : [])]),
   ];
 }
+
+// Debug (only with DEBUG=1): copy the forum session's cookies out, and import them back from the clipboard.
+// The text is a live session credential: it is never logged or shown.
+function debugItems(): MenuItem[] {
+  return [
+    { label: "Copy Session Cookies", onSelect: copySessionCookies },
+    { label: "Import Session Cookies", onSelect: openCookieImport },
+  ];
+}
+
+function copySessionCookies(): void {
+  Clipboard.writeText(exportCookies());
+}
+
 
 /** Sets the menu bar, and sets it again whenever a command, its state or the appearance changes. Call once, from the app. */
 export function installMenu(): void {

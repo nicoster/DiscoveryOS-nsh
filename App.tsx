@@ -13,6 +13,8 @@ import { hideSystemTitleBar } from "./src/ui/TitleBar";
 import { availableUpdate, installUpdate, startUpdateCheck } from "./src/update";
 import { appearanceMode, appearanceName, cycleAppearance, palette, restoreAppearance, type AppearanceMode } from "./src/ui/appearance";
 import { installMenu } from "./src/ui/commands";
+import { CookieImportDialog, cookieImportOpen } from "./src/ui/CookieImport";
+import { debugEnabled } from "./src/debugLog";
 
 // Port of `LoginView` (`Views/MainView.swift`) and `CurrentUserStore`: the forum is
 // shown to everyone; the session is restored on launch from the saved cookies, then
@@ -475,6 +477,7 @@ function App() {
       </View>
       {dialogOpen() ? signInDialog : null}
       {confirmOpen() ? signOutDialog : null}
+      {debugEnabled && cookieImportOpen() ? <CookieImportDialog /> : null}
       <Toaster />
 
     </View>

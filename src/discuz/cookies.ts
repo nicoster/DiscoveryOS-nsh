@@ -2,16 +2,69 @@
 // so a launch resumes the login without asking for the password again. Discuz
 // sets its session (`*_auth`, `*_saltkey`, ...) with `Set-Cookie`; we keep
 // name=value pairs only.
+import process from "process";
 import { loadVault, saveVault } from "./vault";
+
+/** Debug only: the environment variable whose cookies are imported at first use. */
+export const COOKIE_ENV = "DISCUZ_COOKIES";
 
 const jar = new Map<string, string>();
 let loaded = false;
 
-/** Loads the saved cookies once. */
+/** Loads the saved cookies once, then applies `DISCUZ_COOKIES` on top when it is set. */
 function ensureLoaded(): void {
   if (loaded) return;
   loaded = true;
   for (const [k, v] of Object.entries(loadVault().cookies)) jar.set(k, v);
+  const env = process.env[COOKIE_ENV];
+  if (env) {
+    const imported = parseCookieText(env);
+    for (const [k, v] of imported) jar.set(k, v);
+    if (imported.size > 0) save();
+  }
+}
+
+/**
+ * Parses cookies from text: either a JSON object (`{"name":"value"}`, as
+ * `exportCookies` writes) or a `Cookie` header (`a=1; b=2`). Unusable entries
+ * are skipped.
+ */
+export function parseCookieText(text: string): Map<string, string> {
+  const out = new Map<string, string>();
+  const trimmed = text.trim();
+  if (trimmed.startsWith("{")) {
+    try {
+      const obj = JSON.parse(trimmed) as Record<string, unknown>;
+      for (const [k, v] of Object.entries(obj)) if (typeof v === "string" && k) out.set(k, v);
+    } catch {
+      // Not JSON after all: nothing usable.
+    }
+    return out;
+  }
+  for (const part of trimmed.split(";")) {
+    const pair = part.trim();
+    const eq = pair.indexOf("=");
+    if (eq <= 0) continue;
+    out.set(pair.slice(0, eq).trim(), pair.slice(eq + 1).trim());
+  }
+  return out;
+}
+
+/** Debug: the saved cookies as a JSON object text. It holds the session secrets, so do not log it. */
+export function exportCookies(): string {
+  ensureLoaded();
+  return JSON.stringify(Object.fromEntries(jar), null, 2);
+}
+
+/** Debug: replaces the saved cookies with the given text (JSON or `Cookie` header). Returns how many were imported. */
+export function importCookies(text: string): number {
+  ensureLoaded();
+  const imported = parseCookieText(text);
+  if (imported.size === 0) return 0;
+  jar.clear();
+  for (const [k, v] of imported) jar.set(k, v);
+  save();
+  return imported.size;
 }
 
 /** The `Cookie` header for the stored cookies, or `undefined` when there are none. */
