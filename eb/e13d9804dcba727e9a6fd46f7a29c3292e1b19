@@ -1,0 +1,24 @@
+src/keychain.rs
+  s_67753df6a29a6a::t_c8b56957d1bed3 4-6
+  s_67753df6a29a6a::t_8e21d1e8068c3d 56,58-142
+Cargo.toml
+  s_67753df6a29a6a::t_34996684aeffb8 20-22
+Cargo.lock
+  s_67753df6a29a6a::t_4094ff3f7c7813 1689
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ebe13d9804dcba727e9a6fd46f7a29c3292e1b19",
+  "prompts": {},
+  "sessions": {
+    "s_67753df6a29a6a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6dcbd71f-3ab8-478a-9c38-6560fff668cc",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
