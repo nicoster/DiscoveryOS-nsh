@@ -1,0 +1,19 @@
+scripts/install.sh
+  s_0a82adbda003bd::t_805c5e09a66954 1-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7f22686fcb301044614291849330e280a1fffd4c",
+  "prompts": {},
+  "sessions": {
+    "s_0a82adbda003bd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f0f1e07c-2e60-46f2-841f-377cb21d6d5b",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
