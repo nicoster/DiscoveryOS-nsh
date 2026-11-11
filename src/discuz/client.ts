@@ -124,7 +124,10 @@ export async function restoreSession(saved: { name: string; pass: string } | nul
       session = saved;
       return "signed-in";
     }
-  } catch {
+  } catch (e) {
+    // A server refusal (`HTTP …` from `fetchGbRequest`) is not a network failure: report it, so the
+    // user sees why the login did not restore instead of a misleading "offline".
+    if (e instanceof Error && e.message.startsWith("HTTP ")) throw e;
     return "offline";
   }
   if (!saved) return "signed-out";
