@@ -3,7 +3,8 @@
 //! app's own data and has no secrets store, so this goes through Rust.
 //!
 //! macOS uses the login Keychain; Windows uses the Credential Manager (a
-//! per-user generic credential). The JS API is the same on both.
+//! per-user generic credential); Linux uses the Secret Service (GNOME Keyring,
+//! KWallet, …) over the session D-Bus. The JS API is the same everywhere.
 
 use nsh_core::prelude::*;
 
@@ -137,7 +138,68 @@ mod imp {
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[cfg(target_os = "linux")]
+mod imp {
+    use super::service;
+    use secret_service::EncryptionType;
+    use secret_service::blocking::SecretService;
+    use std::collections::HashMap;
+
+    /// The Secret Service attributes that identify one saved secret.
+    fn attributes<'a>(account: &'a str) -> HashMap<&'a str, &'a str> {
+        HashMap::from([("service", service()), ("account", account)])
+    }
+
+    /// Connects to the user's Secret Service (GNOME Keyring, KWallet, …) over
+    /// the session D-Bus. Headless sessions with no provider fail here.
+    fn connect() -> Result<SecretService<'static>, String> {
+        SecretService::connect(EncryptionType::Dh).map_err(|e| format!("Secret Service unavailable: {e}"))
+    }
+
+    pub fn save(account: &str, secret: &str) -> Result<(), String> {
+        let ss = connect()?;
+        let collection = ss.get_default_collection().map_err(|e| e.to_string())?;
+        if collection.is_locked().map_err(|e| e.to_string())? {
+            collection.unlock().map_err(|e| e.to_string())?;
+        }
+        collection
+            .create_item(
+                &format!("{} ({account})", service()),
+                attributes(account),
+                secret.as_bytes(),
+                true,
+                "text/plain",
+            )
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    pub fn load(account: &str) -> Result<Option<String>, String> {
+        let ss = connect()?;
+        let found = ss.search_items(attributes(account)).map_err(|e| e.to_string())?;
+        let item = match (found.unlocked.into_iter().next(), found.locked.into_iter().next()) {
+            (Some(item), _) => item,
+            (None, Some(item)) => {
+                item.unlock().map_err(|e| e.to_string())?;
+                item
+            }
+            (None, None) => return Ok(None),
+        };
+        let bytes = item.get_secret().map_err(|e| e.to_string())?;
+        String::from_utf8(bytes).map(Some).map_err(|e| e.to_string())
+    }
+
+    pub fn delete(account: &str) -> Result<(), String> {
+        let ss = connect()?;
+        let found = ss.search_items(attributes(account)).map_err(|e| e.to_string())?;
+        for item in found.unlocked.into_iter().chain(found.locked) {
+            item.delete().map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 mod imp {
     const MSG: &str = "the Keychain is not available on this platform";
 
