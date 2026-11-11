@@ -1,0 +1,19 @@
+src/discuz/client.ts
+  s_2a9cfbca73bc73::t_d9f1ae018632a4 127-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "86b2247761e6daf1d508cc35df3e6f1e1b19c863",
+  "prompts": {},
+  "sessions": {
+    "s_2a9cfbca73bc73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48623943-e00e-422b-b517-bd4e0fae7c37",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
