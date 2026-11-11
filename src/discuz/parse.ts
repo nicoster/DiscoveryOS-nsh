@@ -386,17 +386,24 @@ export function htmlToText(html: string): string {
     .trim();
 }
 
-/** `DiscuzAPI.quoted`: a Discuz `[quote]` of a reply, linking back to it. */
-export function buildQuote(
-  host: string,
-  thread: { id: string; title: string },
-  reply: Reply,
-): string {
-  return (
-    `[quote] ${htmlToText(reply.body)}\n` +
-    `[size=2][color=#999999]${reply.author.name} 发表于 ${reply.at}[/color] ` +
-    `[url=${host}redirect.php?goto=findpost&pid=${reply.id}&ptid=${thread.id}][img]${host}images/common/back.gif[/img][/url][/size][/quote]\n`
-  );
+/**
+ * The floor a 4d4y `findpost` link opens (`redirect.php?goto=findpost&pid=…&ptid=…`, the arrow
+ * of a quote): its post and thread. Any other link gives `undefined`.
+ */
+export function floorFromLink(href: string): { pid: string; ptid: string } | undefined {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return undefined;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return undefined;
+  if (url.hostname !== "4d4y.com" && !url.hostname.endsWith(".4d4y.com")) return undefined;
+  if (!/(^|\/)redirect\.php$/.test(url.pathname) || url.searchParams.get("goto") !== "findpost") return undefined;
+  const pid = url.searchParams.get("pid");
+  const ptid = url.searchParams.get("ptid");
+  if (!pid || !ptid || !/^\d+$/.test(pid) || !/^\d+$/.test(ptid)) return undefined;
+  return { pid, ptid };
 }
 
 /**
@@ -516,6 +523,69 @@ export function fixImages(html: string): string {
     kept = kept.replace(/\s(width|height)="[^"]*"/gi, "").replace(/\s+/g, " ").trim();
     return `<p><img src="${picture}"${kept ? " " + kept : ""} width="100%"></p>`;
   });
+}
+
+// Discuz's `[size=N]` as the pixel size of the font (1 to 7).
+const FONT_SIZES = [10, 13, 16, 18, 24, 32, 48];
+
+/** Index just past the `</div>` that closes the `<div>` whose content starts at `from`, or -1. */
+function closingDivEnd(html: string, from: number): number {
+  const tag = /<(\/?)div\b[^>]*>/gi;
+  tag.lastIndex = from;
+  let depth = 1;
+  for (let m = tag.exec(html); m; m = tag.exec(html)) {
+    depth += m[1] ? -1 : 1;
+    if (depth === 0) return m.index + m[0].length;
+  }
+  return -1;
+}
+
+const escapeHtml = (text: string): string => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/** The lines of a Discuz `[code]` block: each `<li>` is a line (closing tag optional), with the
+ * copy button's label dropped and the newlines the markup puts around each line removed. */
+function codeLines(inner: string): string[] {
+  const withoutButton = inner.replace(/<([a-z]+)\b[^>]*>\s*复制代码\s*<\/\1>/gi, "").replace(/复制代码/g, "");
+  const parts = withoutButton.split(/<li\b[^>]*>/i);
+  const lines =
+    parts.length > 1
+      ? parts.slice(1).map((part) => part.replace(/<\/li\s*>[\s\S]*$/i, "").replace(/<\/?ol\b[^>]*>[\s\S]*$/i, ""))
+      : withoutButton.replace(/<br\s*\/?>/gi, "\n").split("\n").filter((line) => line.trim() !== "");
+  return lines.map((line) => htmlDecode(line.replace(/<[^>]+>/g, "")).replace(/^[\r\n]+|[\r\n]+$/g, ""));
+}
+
+/** Discuz's `[code]` block as one monospace block, every line kept as written. */
+function codeBlockHtml(inner: string): string {
+  return `<pre><code>${escapeHtml(codeLines(inner).join("\n"))}</code></pre>`;
+}
+
+/** Discuz's `[code]` (a `div.blockcode` of numbered lines) rewritten as a `<pre><code>` block, which the
+ * TextView shows in monospace with its line breaks kept. The other BBCode the forum renders as HTML (`<font>`
+ * for color and size, links, pictures, quotes) is left for the TextView's extensions and its own parsing.
+ * Run after `fixImages`. */
+export function fixDiscuzMarkup(html: string): string {
+  let out = "";
+  let at = 0;
+  const codeOpen = /<div\b[^>]*class="blockcode"[^>]*>/gi;
+  for (let m = codeOpen.exec(html); m; m = codeOpen.exec(html)) {
+    const end = closingDivEnd(html, m.index + m[0].length);
+    if (end < 0) break;
+    const inner = html.slice(m.index + m[0].length, end - "</div>".length);
+    out += html.slice(at, m.index) + codeBlockHtml(inner);
+    at = end;
+    codeOpen.lastIndex = end;
+  }
+  return out + html.slice(at);
+}
+
+/** The style of a Discuz `<font>` (`[color=…]` and `[size=N]`): a hex or a plain color name, and the font size in pixels. */
+export function discuzFontStyle(attributes: Record<string, string>): { color?: string; fontSize?: number } {
+  const color = attributes.color?.trim() ?? "";
+  const size = Number(attributes.size);
+  const style: { color?: string; fontSize?: number } = {};
+  if (/^(#[0-9a-f]{3,8}|[a-z]+)$/i.test(color)) style.color = color;
+  if (Number.isInteger(size) && size >= 1 && size <= FONT_SIZES.length) style.fontSize = FONT_SIZES[size - 1];
+  return style;
 }
 
 /** A post's file attachment: the link's address (as the page has it) and the file name it shows. */

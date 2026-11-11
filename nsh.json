@@ -31,6 +31,8 @@
     "webview": {
       "hosts": [
         "*.bilibili.com",
+        "b23.tv",
+        "bili2233.cn",
         "*.hdslb.com",
         "*.bilivideo.com",
         "*.douyin.com",
@@ -42,7 +44,23 @@
         "*.bytecdn.cn",
         "*.snssdk.com",
         "*.pstatp.com",
-        "*.zijieapi.com"
+        "*.zijieapi.com",
+        "v.douyin.com",
+        "youtube.com",
+        "*.youtube.com",
+        "vimeo.com",
+        "*.vimeo.com",
+        "v.youku.com",
+        "v.qq.com",
+        "*.iqiyi.com",
+        "*.ixigua.com",
+        "*.kuaishou.com",
+        "*.weibo.com",
+        "*.tiktok.com",
+        "x.com",
+        "*.x.com",
+        "twitter.com",
+        "*.twitter.com"
       ]
     },
     "openUrl": {

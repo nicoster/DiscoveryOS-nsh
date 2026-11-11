@@ -1,11 +1,13 @@
 // A thread's replies, pages, quote and reply draft (`PostDetailView` of the
 // Swift app). The draft is kept per thread in the app's storage.
 import { keymap, List, signal, Storage, Text, View, type PasteEvent, type ListRef } from "nsh";
-import { TextView } from "nsh/base";
-import { HOST, postReply, ReplyRefused, uploadAttachment } from "../discuz/client";
-import { bookmarkPost, loadReplyPage, removeBookmark } from "../discuz/forum";
-import { absolutize, absoluteUrl, attachmentLinks, buildQuote, fixImages, isAttachmentUrl, mergePage, threadIdFromLink, trimLeadingBlanks, type Post, type Reply } from "../discuz/parse";
+import { Dialog, TextView } from "nsh/base";
+import { currentUser, deletePost, editPost, HOST, loadEditForm, postReply, ReplyRefused, uploadAttachment, uploadEditAttachment, type EditForm } from "../discuz/client";
+import { bookmarkPost, clearThreadReplyPages, loadFloorPage, loadReplyPage, removeBookmark } from "../discuz/forum";
+import { absolutize, absoluteUrl, attachmentLinks, fixDiscuzMarkup, fixImages, floorFromLink, isAttachmentUrl, mergePage, threadIdFromLink, trimLeadingBlanks, type Post, type Reply } from "../discuz/parse";
+import { draftToPost, postToDraft, replyQuoteInDraft } from "../discuz/quote";
 import { downloadAttachment } from "./downloads";
+import { DISCUZ_EXTENSIONS, renderDiscuzNode } from "./discuzMarkup";
 import { useCommand } from "./commands";
 import { openLink } from "./links";
 import { timeAgo } from "../discuz/timeAgo";
@@ -13,10 +15,11 @@ import { LoadingBar } from "./LoadingBar";
 import { notify } from "./toast";
 import { palette } from "./appearance";
 import { titleBarShown } from "./TitleBar";
-import { BubbleIcon, StarIcon } from "./icons";
+import { BrowserIcon, BubbleIcon, PencilIcon, StarIcon, TrashIcon } from "./icons";
 import { ReplyCard } from "./ReplyCard";
 import { ReplyBox } from "./ReplyBox";
 import { attachmentTag, createAttachments } from "./attachments";
+import type { Attached } from "./ReplyBox";
 import { hint } from "./Hint";
 import { canSendReply } from "./replyGate";
 import { bilibiliRefs } from "../bilibili/links";
@@ -24,6 +27,8 @@ import { BiliPlayer, BiliShortPlayer } from "./BiliPlayer";
 import { douyinRefs } from "../douyin/links";
 import { DouyinPlayer, DouyinShortPlayer } from "./DouyinPlayer";
 import { xiaohongshuNoteLinks } from "../xiaohongshu/links";
+import { videoLinksIn } from "../video/links";
+import { VideoLinkPlayer } from "./VideoLinkPlayer";
 import { XhsCard } from "./XhsCard";
 
 // A picture by its name or its type; anything else is a file.
@@ -52,9 +57,12 @@ export function Thread(props: {
   post: Post;
   signedIn?: boolean;
   onUnfavorited?: () => void;
-  onOpenThread?: (tid: string) => void;
+  /** Opens a thread; with `pid`, at that floor (a floor link to another thread). */
+  onOpenThread?: (tid: string, pid?: string) => void;
   onBack?: () => void;
   shortcutsOpen?: () => boolean;
+  /** The floor a link opened in this thread, shown first. */
+  focusPid?: string;
 }) {
   // The title and forum: the post's own, or those the first page names for a thread opened from a link.
   const title = signal(props.post.title);
@@ -70,6 +78,8 @@ export function Thread(props: {
   const sending = signal(false);
   // Whether the thread is in the favorites: the shared list, which the thread lists star from.
   const saved = () => isFavorite(props.post.id);
+  // The thread's page on the forum, for the browser.
+  const threadUrl = () => `${HOST}viewthread.php?tid=${props.post.id}`;
 
   let loadingMore = false;
   const loadingMoreShown = signal(false);
@@ -78,7 +88,7 @@ export function Thread(props: {
     loadReplyPage(props.post.id, n)
       .then(({ title: pageTitle, fid: pageFid, replies: list }) => {
         if (n === 1 && pageTitle) title.set(pageTitle);
-        if (n === 1 && pageFid && !fid()) fid.set(pageFid);
+        if (pageFid && !fid()) fid.set(pageFid);
         const merged = n === 1 ? { items: list, more: list.length > 0 } : mergePage(replies(), list);
         replies.set(merged.items);
         more.set(merged.more);
@@ -110,7 +120,7 @@ export function Thread(props: {
   async function send() {
     if (!canSendReply(draft()) || sending() || uploading()) return;
     // The reply's text, then the pictures as their tags.
-    const body = [draft(), ...attachments().map(attachmentTag)].join("\n");
+    const body = [draftToPost(draft(), HOST), ...attachments().map(attachmentTag)].join("\n");
     sending.set(true);
     try {
       await postReply(fid(), props.post.id, body);
@@ -125,6 +135,8 @@ export function Thread(props: {
     }
     // Reload the replies whether or not the post reported success: the server may have kept
     // the reply even when its answer was unclear, and the list should show what it holds.
+    // The thread's cached pages are stale now, so they are asked again.
+    clearThreadReplyPages(props.post.id);
     replies.set([]);
     more.set(true);
     fetchPage(1);
@@ -132,14 +144,129 @@ export function Thread(props: {
 
   // Pictures and files pasted or dropped into the reply: uploaded to the thread, sent as tags with the reply.
   const { attachments, uploading, onPaste, onFileDrop } = createAttachments(
-    (file, kind) => uploadAttachment(fid(), props.post.id, file, kind),
+    (file, kind) => {
+      // While a reply is edited, its pictures go through the edit form's own upload box.
+      const current = editing();
+      return current ? uploadEditAttachment(current.form, file, kind) : uploadAttachment(fid(), props.post.id, file, kind);
+    },
     (name) => `Couldn't upload ${name}. Try again.`,
     "Can't attach that file. Try dragging it into the box.",
   );
 
   function quote(r: Reply) {
-    const text = buildQuote(HOST, { id: props.post.id, title: title() }, r) + draft();
-    setDraft(text);
+    const text = replyQuoteInDraft(r, props.post.id);
+    setDraft(draft() ? `${text}\n\n${draft()}` : `${text}\n`);
+  }
+
+  // Shows floor `pid` of this thread: when the list does not have it, its page replaces the
+  // replies (the posts after it load from there), then the list scrolls to the floor.
+  async function showFloor(pid: string) {
+    if (!replies().some((r) => r.id === pid)) {
+      try {
+        const found = await loadFloorPage(props.post.id, pid);
+        if (found.title) title.set(found.title);
+        if (found.fid && !fid()) fid.set(found.fid);
+        replies.set(found.replies);
+        page.set(found.page);
+        more.set(found.replies.length > 0);
+      } catch (e) {
+        notify("floor-error", "Couldn't open that post.");
+        return;
+      }
+    }
+    const index = replies().findIndex((r) => r.id === pid);
+    if (index < 0) return;
+    // The list lays out the replies it was given before it can scroll to one of them.
+    setTimeout(() => repliesList?.scrollToIndex({ index, viewPosition: 0 }), 0);
+  }
+
+  // A link to a floor: in this thread the floor is shown here; in another, that thread opens at it.
+  function openFloor(pid: string, tid: string) {
+    if (tid === props.post.id) void showFloor(pid);
+    else props.onOpenThread?.(tid, pid);
+  }
+
+  // The reply the box is editing: its loaded edit form and the text in the box. While it is set, the
+  // box edits that reply instead of composing a new one; the reply draft is kept aside.
+  const editing = signal<{ pid: string; seq: number; form: EditForm; text: string } | null>(null);
+  // Only the signed-in user's own replies can be edited.
+  const isOwn = (r: Reply) => !!props.signedIn && currentUser() === r.author.name;
+
+  // The reply's own pictures, set aside while an edit is open; the edit has its own.
+  let replyPictures: Attached[] = [];
+
+  async function startEdit(r: Reply) {
+    if (sending() || uploading() || editing()) return;
+    try {
+      const form = await loadEditForm(fid(), props.post.id, r.id, 1);
+      replyPictures = attachments();
+      attachments.set([]);
+      // The box shows the quotes as `>` lines; saving turns them back into the forum's quotes.
+      editing.set({ pid: r.id, seq: r.seq, form, text: postToDraft(form.message) });
+      replyField?.focus();
+    } catch (e) {
+      notify("edit-error", e instanceof ReplyRefused ? e.message : "Couldn't open this reply for editing. Try again.");
+    }
+  }
+
+  function endEdit() {
+    editing.set(null);
+    attachments.set(replyPictures);
+    replyPictures = [];
+  }
+
+  // The reply waiting for its delete to be confirmed in the dialog, or null.
+  const pendingDelete = signal<{ pid: string; seq: number } | null>(null);
+
+  // Deletes the confirmed reply, then shows the thread as the forum now holds it.
+  async function removeReply() {
+    const target = pendingDelete();
+    pendingDelete.set(null);
+    if (!target || sending() || uploading()) return;
+    sending.set(true);
+    try {
+      const form = await loadEditForm(fid(), props.post.id, target.pid, 1);
+      await deletePost(fid(), props.post.id, target.pid, 1, form);
+      notify("delete", "Reply deleted.");
+    } catch (e) {
+      notify("delete-error", e instanceof ReplyRefused ? e.message : "Couldn't delete this reply. Try again.");
+    } finally {
+      sending.set(false);
+    }
+    clearThreadReplyPages(props.post.id);
+    replies.set([]);
+    more.set(true);
+    fetchPage(1);
+  }
+
+  function cancelEdit() {
+    // A picture still uploading would land in the reply's list, so the edit waits for it.
+    if (uploading()) return;
+    endEdit();
+  }
+
+  async function saveEdit() {
+    const current = editing();
+    if (!current || !canSendReply(current.text) || sending() || uploading()) return;
+    // The pictures go with the text as tags, as a reply's do.
+    const body = [draftToPost(current.text, HOST), ...attachments().map(attachmentTag)].join("\n");
+    sending.set(true);
+    try {
+      await editPost(fid(), props.post.id, current.pid, 1, current.form, body);
+      notify("edit", "Reply edited.");
+      endEdit();
+    } catch (e) {
+      // The forum's own refusal is shown as it words it; the box keeps the text for another try.
+      notify("edit-error", e instanceof ReplyRefused ? e.message : "Couldn't save your edit. Try again.");
+    } finally {
+      sending.set(false);
+    }
+    // Reload the replies whether or not the save reported success, as after a reply: the cached
+    // pages hold the old text, so they are dropped and the thread is asked again.
+    clearThreadReplyPages(props.post.id);
+    replies.set([]);
+    more.set(true);
+    fetchPage(1);
   }
 
   // Adds the thread to the favorites, or removes it when it is saved.
@@ -207,7 +334,7 @@ export function Thread(props: {
     run: () => void toggleFavorite(),
   });
   useCommand("thread.quote", {
-    enabled: () => keysOn() && !!props.signedIn && replies().some((r) => r.seq === hovered()),
+    enabled: () => keysOn() && !!props.signedIn && !editing() && replies().some((r) => r.seq === hovered()),
     run: () => {
       const target = replies().find((r) => r.seq === hovered());
       if (!target) return;
@@ -215,11 +342,23 @@ export function Thread(props: {
       replyField?.focus();
     },
   });
+  // `e` edits the highlighted reply, when it is the signed-in user's own (the same reply `q` quotes).
+  useCommand("thread.edit", {
+    enabled: () => {
+      const target = replies().find((r) => r.seq === hovered());
+      return keysOn() && !editing() && !!target && isOwn(target);
+    },
+    run: () => {
+      const target = replies().find((r) => r.seq === hovered());
+      if (target) void startEdit(target);
+    },
+  });
 
   // Load the first page and the saved draft once.
-  fetchPage(1);
+  if (props.focusPid) void showFloor(props.focusPid);
+  else fetchPage(1);
   Storage.getItem(draftKey(props.post.id))
-    .then((text) => draft.set(text ?? ""))
+    .then((text) => draft.set(postToDraft(text ?? "")))
     .catch(() => undefined);
 
   return (
@@ -228,23 +367,49 @@ export function Thread(props: {
           on the bar's 44pt; it drags the window where nothing presses. With no bar, it keeps the top inset. */}
       <View
         desktop={{ windowDrag: true }}
-        style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, padding: 12, paddingTop: titleBarShown() ? 10.5 : 12 }}
+        style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, paddingTop: titleBarShown() ? 18 : 20 }}
       >
         {props.onBack ? (
           <View onPress={props.onBack} accessibilityLabel="Back" style={{ position: "absolute", left: 12, paddingVertical: 4, paddingHorizontal: 6 }}>
             <Text style={{ fontSize: 13, color: palette().muted }}>{"‹ Back"}</Text>
           </View>
         ) : null}
-        <Text style={{ fontSize: 22, fontWeight: 600, color: palette().text }}>{title()}</Text>
-        {props.signedIn ? (
+        {/* The title is centred in the space left of the icons; a long one is cut off at the icons' edge,
+            and fades out over its last stretch there. */}
+        <View style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+          <Text style={{ numberOfLines: 1, textAlign: "center", fontSize: 22, fontWeight: 600, color: palette().text }}>{title()}</Text>
           <View
-            onPress={toggleFavorite}
-            accessibilityLabel={saved() ? "Remove from favorites" : "Add to favorites"}
-            tooltip={hint(saved() ? "取消收藏 (f)" : "收藏 (f)")}
+            style={{
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              right: 0,
+              width: 36,
+              backgroundImage: `linear-gradient(to right, transparent, ${palette().bg})`,
+            }}
+          />
+        </View>
+        {/* The icons sit at the right: the thread's browser and site icon, which opens the thread in the
+            system browser, and the favorite star. */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          {props.signedIn ? (
+            <View
+              onPress={toggleFavorite}
+              accessibilityLabel={saved() ? "Remove from favorites" : "Add to favorites"}
+              tooltip={hint(saved() ? "取消收藏 (f)" : "收藏 (f)")}
+            >
+              {saved() ? <StarIcon size={20} filled={true} /> : <StarIcon size={20} />}
+            </View>
+          ) : null}
+          <View
+            onPress={() => void openLink(threadUrl())}
+            accessibilityLabel="Open the thread in the browser"
+            tooltip={hint("在浏览器中打开")}
+            style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
           >
-            {saved() ? <StarIcon size={20} filled={true} /> : <StarIcon size={20} />}
+            <BrowserIcon size={20} />
           </View>
-        ) : null}
+        </View>
       </View>
       {failedPage() !== null ? (
         <View style={{ alignItems: "center", padding: 16, gap: 8 }}>
@@ -284,19 +449,40 @@ export function Thread(props: {
             }}
             trailing={
               props.signedIn ? (
-                <View onPress={() => quote(item())} accessibilityLabel="Quote" tooltip={hint("引用 (q)")}>
-                  <BubbleIcon size={16} />
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  {isOwn(item()) ? (
+                    <View onPress={() => void startEdit(item())} accessibilityLabel="Edit" tooltip={hint("编辑")}>
+                      <PencilIcon size={16} />
+                    </View>
+                  ) : null}
+                  {/* The floor 1 is the thread itself, which is not deleted from here. */}
+                  {isOwn(item()) && item().seq !== 1 ? (
+                    <View onPress={() => pendingDelete.set({ pid: item().id, seq: item().seq })} accessibilityLabel="Delete" tooltip={hint("删除")}>
+                      <TrashIcon size={16} />
+                    </View>
+                  ) : null}
+                  <View onPress={() => quote(item())} accessibilityLabel="Quote" tooltip={hint("引用 (q)")}>
+                    <BubbleIcon size={16} />
+                  </View>
                 </View>
               ) : null
             }
             body={
               <View style={{ gap: 12, alignSelf: "stretch" }}>
                 <TextView
-                  html={absolutize(trimLeadingBlanks(fixImages(item().body)), HOST)}
+                  html={absolutize(trimLeadingBlanks(fixDiscuzMarkup(fixImages(item().body))), HOST)}
                   styles={item().seq === 1 ? OP_TITLE_STYLES : undefined}
+                  extensions={DISCUZ_EXTENSIONS}
+                  renderCustom={renderDiscuzNode}
                   onLinkPress={(e) => {
                     // A 4d4y thread link opens in this column; a file the post attaches is saved to Downloads;
                     // any other link opens in the system browser.
+                    // A quote's arrow goes to its floor (see `openFloor`).
+                    const floor = floorFromLink(e.url);
+                    if (floor) {
+                      openFloor(floor.pid, floor.ptid);
+                      return;
+                    }
                     const tid = threadIdFromLink(e.url);
                     if (tid && props.onOpenThread) {
                       props.onOpenThread(tid);
@@ -311,6 +497,9 @@ export function Thread(props: {
                 {/* Bilibili videos the post links to play under its text (the text view cannot show a player). */}
                 {bilibiliRefs(item().body).map((ref) => ("url" in ref ? <BiliShortPlayer url={ref.url} /> : <BiliPlayer video={ref} />))}
                 {douyinRefs(item().body).map((ref) => ("url" in ref ? <DouyinShortPlayer url={ref.url} /> : <DouyinPlayer id={ref.id} />))}
+                {videoLinksIn(item().body).map((url) => (
+                  <VideoLinkPlayer url={url} />
+                ))}
                 {xiaohongshuNoteLinks(item().body).map((link) => (
                   <XhsCard link={link} />
                 ))}
@@ -321,20 +510,66 @@ export function Thread(props: {
       </List>
       {/* The Send button sits inside the reply box, under the text, at its right edge. Signed out, there is no reply box. */}
       {props.signedIn ? (
-        <ReplyBox
-          onFileDrop={onFileDrop}
-          draft={() => draft()}
-          onDraft={(text) => setDraft(text)}
-          sending={() => sending()}
-          uploading={() => uploading()}
-          attachments={() => attachments()}
-          canSend={() => canSendReply(draft())}
-          onSend={send}
-          onPaste={onPaste}
-          fieldRef={(field) => {
-            replyField = field;
-          }}
-        />
+        <View style={{ alignSelf: "stretch" }}>
+          {/* Shown while the box edits a reply: which floor, and that Send saves the edit. */}
+          {editing() ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 18, paddingTop: 12 }}>
+              <Text style={{ fontSize: 12, color: palette().muted }}>{`正在编辑 #${editing()!.seq}`}</Text>
+            </View>
+          ) : null}
+          {/* The box edits the reply under edit, and composes a new reply otherwise. */}
+          <ReplyBox
+            onFileDrop={onFileDrop}
+            draft={() => editing()?.text ?? draft()}
+            onDraft={(text) => {
+              const current = editing();
+              if (current) editing.set({ ...current, text });
+              else setDraft(text);
+            }}
+            sending={() => sending()}
+            uploading={() => uploading()}
+            attachments={() => attachments()}
+            canSend={() => canSendReply(editing()?.text ?? draft())}
+            onSend={() => (editing() ? void saveEdit() : void send())}
+            onPaste={onPaste}
+            onCancel={cancelEdit}
+            cancelShown={() => editing() !== null}
+            fieldRef={(field) => {
+              replyField = field;
+            }}
+          />
+        </View>
+      ) : null}
+      {/* Deleting asks first. The button is red: the reply cannot be brought back. */}
+      {pendingDelete() ? (
+        // The popup fills the window and centres the card, which a dialog would otherwise leave at its top left.
+        <Dialog
+          animation="fade"
+          onCancel={() => pendingDelete.set(null)}
+          style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}
+          backdropStyle={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0, backgroundColor: "rgba(0, 0, 0, 0.3)" }}
+        >
+          <View style={{ width: 320, padding: 20, gap: 12, borderRadius: 12, backgroundColor: palette().bg }}>
+            <Text style={{ fontSize: 15, fontWeight: 600, color: palette().text }}>{`删除 #${pendingDelete()!.seq} 这条回复？`}</Text>
+            <Text style={{ fontSize: 13, color: palette().muted }}>删除后无法恢复。</Text>
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
+              <View
+                onPress={() => pendingDelete.set(null)}
+                accessibilityLabel="Cancel"
+                style={{ paddingVertical: 6, paddingHorizontal: 14, borderRadius: 6, borderWidth: 1, borderColor: palette().border }}
+              >
+                <Text style={{ fontSize: 13, color: palette().text }}>取消</Text>
+              </View>
+              <View
+                onPress={() => void removeReply()}
+                accessibilityLabel="Delete"
+                style={{ paddingVertical: 6, paddingHorizontal: 14, borderRadius: 6, backgroundColor: palette().danger }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: 600, color: "#ffffff" }}>删除</Text>
+              </View>
+            </View>
+          </View>
+        </Dialog>
       ) : null}
     </View>
   );

@@ -6,7 +6,7 @@ const KEY = "visual:channels-collapsed";
 
 /** Below this window width the channel column is always a rail. */
 export const RAIL_BELOW = 860;
-export const FULL_WIDTH = 220;
+export const FULL_WIDTH = 228;
 export const RAIL_WIDTH = 56;
 
 const collapsed = signal(false);

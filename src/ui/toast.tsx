@@ -5,6 +5,7 @@
 import { createMotion, signal, Text, View } from "nsh";
 import { ToastManager, type ToastEntry } from "nsh/base";
 import { palette } from "./appearance";
+import { titleBarShown } from "./TitleBar";
 
 const TIMEOUT_MS = 3000;
 // Messages a tap can act on stay longer, so there is time to read them and tap.
@@ -70,10 +71,10 @@ function ToastItem(props: { text: string; onPress?: () => void }) {
   );
 }
 
-/** The toasts, in the window's top-right corner. Place it in a view that fills the window. */
+/** The toasts, in the window's top-right corner, below the title bar when there is one. Place it in a view that fills the window. */
 export function Toaster() {
   return (
-    <View style={{ position: "absolute", top: 12, right: 12, alignItems: "flex-end", gap: 6 }}>
+    <View style={{ position: "absolute", top: titleBarShown() ? 56 : 12, right: 12, alignItems: "flex-end", gap: 6 }}>
       <Each of={shown()} key={(e: ToastEntry) => e.id}>
         {(entry) => <ToastItem text={String(entry().value)} onPress={actions.has(entry().id) ? () => tap(entry().id) : undefined} />}
       </Each>

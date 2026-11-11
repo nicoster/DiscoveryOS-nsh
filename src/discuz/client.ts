@@ -1,7 +1,8 @@
 // Port of `DiscuzAPI.swift`'s session handling: login, the form hash, the
 // page size, and the re-login when a page asks for it. Pages are GB18030.
-import { formEncodeGb, fetchGbRequest, htmlEntities, postFormGb } from "./encoding";
+import { formEncodeGb, fetchGbRequest, htmlEntities, postFormGb, postGbNoRedirect } from "./encoding";
 import { absorbSetCookie, clearCookies, cookieHeader } from "./cookies";
+import { htmlDecode } from "./parse";
 
 export const HOST = "https://www.4d4y.com/forum/";
 
@@ -9,6 +10,8 @@ export const HOST = "https://www.4d4y.com/forum/";
 const LOGIN_REQUIRED = '<select name="loginfield" id="loginfield">';
 // The logout link, which carries the form hash, is only there when signed in.
 const LOGOUT_LINK = /<a href="logging\.php\?action=logout&amp;formhash=([^"]+)">退出<\/a>/;
+// The hidden `formhash` input every form on a logged-in page carries (`<input type="hidden" name="formhash" value="…" />`).
+const HIDDEN_FORMHASH = /<input[^>]*\bname="formhash"[^>]*\bvalue="([^"]+)"/;
 // Discuz's confirmation, and the box it shows when it refuses a post.
 const REPLY_OK = "非常感谢，您的回复已经发布，现在将转入主题页";
 const POSTBOX = /<div class="postbox">([\s\S]*?)<\/div>/;
@@ -25,6 +28,11 @@ export let pageSize = 50;
 /** The form hash in a page, if it shows the logged-in header. */
 export function parseFormHash(html: string): string | undefined {
   return LOGOUT_LINK.exec(html)?.[1];
+}
+
+/** The form hash in a page's hidden form input, if it has one. */
+export function parseHiddenFormHash(html: string): string | undefined {
+  return HIDDEN_FORMHASH.exec(html)?.[1];
 }
 
 /** The posts-per-page setting in the profile page, if present and positive. */
@@ -50,11 +58,31 @@ export async function request(
   const headerCookie = [cookieHeader(), cookie].filter(Boolean).join("; ") || undefined;
   const { html, setCookies } = await fetchGbRequest(method, url, body, headerCookie);
   absorbSetCookie(setCookies);
+  // Every signed-in page carries a fresh form hash; keep the latest so writes don't use a stale one.
+  if (formHash) {
+    const fresh = parseHiddenFormHash(html) ?? parseFormHash(html);
+    if (fresh) formHash = fresh;
+  }
   if (retry && isLoginRequired(html) && session) {
     const relogged = await reLogin(session.name, session.pass);
     if (relogged) return request(method, path, { query, form, retry: false, cookie });
   }
   return html;
+}
+
+/**
+ * The thread page holding post `pid`, found through Discuz's `findpost` redirect, which the
+ * fetch follows: the page's HTML and its page number (1 when the address names none).
+ */
+export async function findFloor(tid: string, pid: string): Promise<{ html: string; page: number }> {
+  const { html, setCookies, url } = await fetchGbRequest(
+    "GET",
+    `${HOST}redirect.php?goto=findpost&pid=${pid}&ptid=${tid}`,
+    undefined,
+    cookieHeader() || undefined,
+  );
+  absorbSetCookie(setCookies);
+  return { html, page: Number(new URL(url).searchParams.get("page")) || 1 };
 }
 
 async function dologin(name: string, pass: string): Promise<string | undefined> {
@@ -70,7 +98,13 @@ async function dologin(name: string, pass: string): Promise<string | undefined> 
 let loginInFlight: Promise<string | undefined> | null = null;
 
 function reLogin(name: string, pass: string): Promise<string | undefined> {
-  loginInFlight ??= dologin(name, pass).finally(() => {
+  // The new login's form hash replaces the old one: every write sends it, and the old one is refused.
+  loginInFlight ??= dologin(name, pass)
+    .then((hash) => {
+      if (hash) formHash = hash;
+      return hash;
+    })
+    .finally(() => {
     loginInFlight = null;
   });
   return loginInFlight;
@@ -208,6 +242,21 @@ export async function uploadAttachment(fid: string, tid: string | undefined, fil
   if (!formHash) throw new Error("Not signed in");
   const box = await replyBox(fid, tid);
   postTimes.set(tid ?? newThreadKey(fid), box.posttime);
+  return uploadToBox(box, file, kind);
+}
+
+/**
+ * Uploads a picture while a post is being edited, through the edit form's own upload box. Its post
+ * time is the edit form's, so the picture is linked to the post being edited (not to a new reply).
+ */
+export async function uploadEditAttachment(form: EditForm, file: File, kind: "image" | "file"): Promise<string> {
+  if (!formHash) throw new Error("Not signed in");
+  if (!form.upload) throw new Error("The edit form has no image upload");
+  return uploadToBox({ ...form.upload, posttime: form.posttime }, file, kind);
+}
+
+/** Sends a file through a box's upload form and resolves with its attachment id. */
+async function uploadToBox(box: ReplyBox, file: File, kind: "image" | "file"): Promise<string> {
   const before = await unusedImages(box.posttime);
   const form = new FormData();
   form.append("uid", box.uid);
@@ -263,6 +312,130 @@ export async function postReply(fid: string, tid: string, content: string): Prom
   );
   const outcome = replyOutcome(html);
   if (outcome.posted === false) throw new ReplyRefused(outcome.reason);
+}
+
+/** A post's edit form (`post.php?action=edit`): its subject and text as the form holds them, and the form's post time. */
+export type EditForm = { subject: string; message: string; posttime: string; upload?: { uid: string; hash: string } };
+
+const EDIT_MESSAGE = /<textarea[^>]*name="message"[^>]*>([\s\S]*?)<\/textarea>/;
+const EDIT_SUBJECT = /<input[^>]*name="subject"[^>]*value="([^"]*)"/;
+const EDIT_POSTTIME = /name="posttime" id="posttime" value="(\d+)"/;
+// Discuz's error box on a page it refused (e.g. an edit it does not allow).
+const ALERT_ERROR = /<div class="alert_error">([\s\S]*?)<\/div>/;
+
+/** Reads a post's edit form; `undefined` when the page has none. The text is decoded from the textarea's escaping. */
+export function parseEditForm(html: string): EditForm | undefined {
+  const raw = EDIT_MESSAGE.exec(html)?.[1];
+  const posttime = EDIT_POSTTIME.exec(html)?.[1];
+  if (raw === undefined || !posttime) return undefined;
+  const subject = EDIT_SUBJECT.exec(html)?.[1] ?? "";
+  // The edit page carries the reply box's upload form too, so pictures can be added while editing.
+  const box = parseReplyBox(html);
+  return {
+    subject: htmlDecode(subject),
+    message: htmlDecode(raw).replace(/\r\n?/g, "\n"),
+    posttime,
+    upload: box ? { uid: box.uid, hash: box.hash } : undefined,
+  };
+}
+
+/** Opens a post's edit form (`post.php?action=edit`), as the site's own edit link does. */
+export async function loadEditForm(fid: string, tid: string, pid: string, page = 1): Promise<EditForm> {
+  const html = await request("GET", "post.php", {
+    query: [
+      ["action", "edit"],
+      ["fid", fid],
+      ["tid", tid],
+      ["pid", pid],
+      ["page", String(page)],
+    ],
+  });
+  if (isLoginRequired(html)) throw new ReplyRefused("请重新登录后再编辑。");
+  const form = parseEditForm(html);
+  if (!form) throw new ReplyRefused(alertText(html) ?? "无法打开这条回复的编辑页面。");
+  return form;
+}
+
+/** The text of the forum's error box on a page, if it shows one. */
+function alertText(html: string): string | undefined {
+  const text = ALERT_ERROR.exec(html)?.[1]?.replace(/<[^>]*>/g, "").trim();
+  return text || undefined;
+}
+
+/** The first line of a text that is not blank: what the saved post must still start with. */
+function firstLine(text: string): string {
+  return text.split("\n").map((line) => line.trim()).find((line) => line.length > 0) ?? "";
+}
+
+/**
+ * Saves an edit to a post (`post.php?action=edit&editsubmit=yes`), with the form the site sends
+ * from a browser. `form` is the edit form as it was loaded (its subject and post time are sent back).
+ * The forum's answer is not parsed for success: the edit form is read again, and the edit counts as
+ * saved when it starts with the new text's first line. Rejects with `ReplyRefused` otherwise.
+ */
+export async function editPost(fid: string, tid: string, pid: string, page: number, form: EditForm, content: string): Promise<void> {
+  if (!formHash) throw new Error("Not signed in");
+  const message = htmlEntities(content.replace(/\n/g, "\r\n"));
+  const fields: [string, string][] = [
+    ["formhash", formHash],
+    ["posttime", form.posttime],
+    ["wysiwyg", "1"],
+    ["fid", fid],
+    ["tid", tid],
+    ["pid", pid],
+    ["page", String(page)],
+    ["iconid", "0"],
+    ["subject", htmlEntities(form.subject)],
+    ["message", message],
+    ["tags", ""],
+    ["usesig", "1"],
+    ["editsubmit", "true"],
+  ];
+  // The pictures the text inserts are linked to the post, as a reply's are.
+  for (const id of attachedIds(content)) fields.push([`attachnew[${id}][description]`, ""]);
+  const body = fields.map(([k, v]) => `${formEncodeGb(k)}=${formEncodeGb(v)}`).join("&");
+  const answer = await postGbNoRedirect(`${HOST}post.php?action=edit&extra=&editsubmit=yes&mod=`, body, cookieHeader() || undefined);
+  absorbSetCookie(answer.setCookies);
+  // A saved edit answers with a redirect (302) to the thread: the forum's own word that it is saved.
+  if (answer.status >= 300 && answer.status < 400 && answer.location && threadIdFromUrl(answer.location) === tid) return;
+  // Otherwise (the redirect is hidden, or the forum answered with a page): read the edit form again.
+  const saved = await loadEditForm(fid, tid, pid, page);
+  const want = firstLine(content);
+  if (!want || !saved.message.split("\n").some((line) => line.trim() === want)) {
+    throw new ReplyRefused(alertText(answer.html) ?? "The forum did not save the edit.");
+  }
+}
+
+/**
+ * Deletes reply `pid` the way the forum's edit box does: its edit form sent with `delete` set
+ * (the box's Delete checkbox). The reply is gone when its edit form no longer opens; a forum
+ * that still opens it refused the delete, and its own words are shown.
+ */
+export async function deletePost(fid: string, tid: string, pid: string, page: number, form: EditForm): Promise<void> {
+  if (!formHash) throw new Error("Not signed in");
+  const fields: [string, string][] = [
+    ["formhash", formHash],
+    ["posttime", form.posttime],
+    ["wysiwyg", "1"],
+    ["fid", fid],
+    ["tid", tid],
+    ["pid", pid],
+    ["page", String(page)],
+    ["subject", htmlEntities(form.subject)],
+    ["message", htmlEntities(form.message.replace(/\n/g, "\r\n"))],
+    ["delete", "1"],
+    ["editsubmit", "true"],
+  ];
+  const body = fields.map(([k, v]) => `${formEncodeGb(k)}=${formEncodeGb(v)}`).join("&");
+  const answer = await postGbNoRedirect(`${HOST}post.php?action=edit&extra=&editsubmit=yes&mod=`, body, cookieHeader() || undefined);
+  absorbSetCookie(answer.setCookies);
+  try {
+    await loadEditForm(fid, tid, pid, page);
+  } catch (e) {
+    if (e instanceof ReplyRefused) return;
+    throw e;
+  }
+  throw new ReplyRefused(alertText(answer.html) ?? "The forum did not delete the reply.");
 }
 
 /**

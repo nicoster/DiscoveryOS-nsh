@@ -7,6 +7,8 @@ import { biliSignedIn, loadBiliSession } from "../bilibili/session";
 import { playerRatio, videoShape, type VideoShape } from "../bilibili/video";
 import { palette } from "./appearance";
 import { BiliLogin } from "./BiliLogin";
+import { ShortLinkPlayer } from "./ShortLinkPlayer";
+import { VIDEO_FULLSCREEN_SCRIPT } from "./webviewFullscreen";
 
 const playerUrl = (video: BiliVideoId) =>
   `https://player.bilibili.com/player.html?${"bvid" in video ? `bvid=${video.bvid}` : `aid=${video.aid}`}&page=1&high_quality=1&autoplay=0`;
@@ -14,16 +16,14 @@ const videoLabel = (video: BiliVideoId) => ("bvid" in video ? video.bvid : `av${
 
 /** A short link (b23.tv) to a Bilibili video: resolved to the video, then shown as a BiliPlayer. */
 export function BiliShortPlayer(props: { url: string }) {
-  const video = signal<BiliVideoId | null>(null);
-  const failed = signal(false);
-  resolveBiliShort(props.url)
-    .then((v) => (v ? video.set(v) : failed.set(true)))
-    .catch(() => failed.set(true));
-
-  return video() ? (
-    <BiliPlayer video={video()!} />
-  ) : (
-    <Text style={{ fontSize: 12, color: palette().muted }}>{failed() ? `无法解析 B 站短链接 ${props.url}` : "解析 B 站短链接…"}</Text>
+  return (
+    <ShortLinkPlayer
+      url={props.url}
+      resolve={resolveBiliShort}
+      play={(video) => <BiliPlayer video={video} />}
+      pending="解析 B 站短链接…"
+      fallbackSize={{ aspectRatio: 16 / 9 }}
+    />
   );
 }
 
@@ -41,7 +41,12 @@ export function BiliPlayer(props: { video: BiliVideoId }) {
   return (
     <View style={{ gap: 8, alignSelf: "stretch" }}>
       {started() ? (
-        <WebView ref={player} src={playerUrl(props.video)} style={{ aspectRatio: ratio(), backgroundColor: "#000", borderRadius: 8 }} />
+        <WebView
+          ref={player}
+          src={playerUrl(props.video)}
+          injectedJavaScript={VIDEO_FULLSCREEN_SCRIPT}
+          style={{ aspectRatio: ratio(), backgroundColor: "#000", borderRadius: 8 }}
+        />
       ) : (
         <View
           onPress={() => started.set(true)}

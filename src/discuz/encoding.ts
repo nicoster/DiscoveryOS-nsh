@@ -32,6 +32,36 @@ export async function fetchGbRequest(
   return { html, setCookies: response.headers.getSetCookie(), url: response.url };
 }
 
+/**
+ * A GB18030 form POST that does not follow its redirect, so the answer's own status and `Location`
+ * are read. A saved edit answers with a redirect to the thread. `opaque` is true when the runtime
+ * hides the redirect (then the status and location are unknown).
+ */
+export async function postGbNoRedirect(
+  url: string,
+  body: string,
+  cookie?: string,
+): Promise<{ status: number; location: string | null; opaque: boolean; html: string; setCookies: string[] }> {
+  const { response, bytes } = await fetchLogged(
+    url,
+    {
+      method: "POST",
+      redirect: "manual",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": USER_AGENT,
+        ...(cookie ? { Cookie: cookie } : {}),
+      },
+      body,
+    },
+    (b) => Gb18030.decode(b),
+  );
+  // The runtime's typings omit "opaqueredirect" from `Response.type`, so it is compared as a string.
+  const opaque = (response.type as string) === "opaqueredirect";
+  const html = opaque ? "" : Gb18030.decode(bytes);
+  return { status: response.status, location: response.headers.get("location"), opaque, html, setCookies: response.headers.getSetCookie() };
+}
+
 /** A multipart POST (an attachment upload). Its reply is GB18030 text; the
  * `Content-Type` with the boundary is the platform's to set. */
 export async function postFormGb(

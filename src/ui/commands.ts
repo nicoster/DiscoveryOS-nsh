@@ -22,6 +22,7 @@ export type CommandId =
   | "thread.reply"
   | "thread.favorite"
   | "thread.quote"
+  | "thread.edit"
   | "reply.send";
 
 interface Definition {
@@ -48,6 +49,7 @@ const CATALOG: Record<CommandId, Definition> = {
   "thread.reply": { title: "Reply", keys: ["r"], order: 120 },
   "thread.favorite": { title: "Favorite Thread", keys: ["f"], order: 130 },
   "thread.quote": { title: "Quote Highlighted Reply", keys: ["q"], order: 140 },
+  "thread.edit": { title: "Edit Highlighted Reply", keys: ["e"], order: 145 },
   "reply.send": { title: "Send Reply", keys: ["mod+enter"], order: 150 },
 };
 
@@ -172,6 +174,7 @@ export function menuBar(): MenuItem[] {
       item("thread.reply"),
       item("thread.favorite"),
       item("thread.quote"),
+      item("thread.edit"),
       item("reply.send"),
     ]),
     submenu("View", [submenu("Appearance", APPEARANCES.map(appearanceItem))]),

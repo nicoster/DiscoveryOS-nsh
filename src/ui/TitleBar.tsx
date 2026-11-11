@@ -186,17 +186,17 @@ export function TitleBar(props: { wide: () => boolean; search: SearchProps }) {
         paddingRight: titleBar().right + 14,
       }}
     >
-      {/* Windows hides the window's menu bar while the title bar is hidden, so the app's menus open from here. */}
-      {platform.os === "windows" ? (
+      {/* Windows and Linux hide the window's menu bar while the title bar is drawn by the app, so the app's menus open from here. */}
+      {platform.os === "windows" || platform.os === "linux" ? (
         <View
           onPress={() => {
             Menu.popup(menuBar()).catch(() => undefined);
           }}
-          accessibilityLabel="Menu"
+          accessibilityLabel="DiscoveryOS"
           tooltip={hint("菜单")}
           style={{ padding: 4, borderRadius: 6 }}
         >
-          <Text style={{ fontSize: 13, color: palette().text }}>Menu</Text>
+          <Text style={{ fontSize: 13, color: palette().text }}>DiscoveryOS</Text>
         </View>
       ) : null}
       {props.wide() ? (

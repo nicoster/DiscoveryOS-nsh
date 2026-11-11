@@ -1,5 +1,5 @@
 import { expect, test } from "nsh/test";
-import { htmlToText, parsePmConversation, parsePmUsers, absolutize, buildQuote, captureGroups, htmlDecode, parseBookmarks, parseChannels, parseMyReplies, parseMyThreads, unescapeNumericEntities, parsePosts, parseProfile, parseReplies, parseSearchResults, parseUser, mergePage, fixImages, removePercentEncoding, trimLeadingBlanks, threadIdFromLink, parseThreadPageInfo } from "./parse";
+import { htmlToText, parsePmConversation, parsePmUsers, absolutize, floorFromLink, captureGroups, htmlDecode, parseBookmarks, parseChannels, parseMyReplies, parseMyThreads, unescapeNumericEntities, parsePosts, parseProfile, parseReplies, parseSearchResults, parseUser, mergePage, fixImages, removePercentEncoding, trimLeadingBlanks, threadIdFromLink, parseThreadPageInfo } from "./parse";
 
 test("captureGroups returns one match's groups, or every whole match", () => {
   expect(captureGroups("a1b", "a(\\d)b", true)).toEqual(["1"]);
@@ -187,17 +187,13 @@ test("leaves out a profile field the page does not show", () => {
   expect(parseProfile("<p>nothing here</p>", "Dan")).toEqual({});
 });
 
-test("quotes a reply as Discuz BBCode", () => {
-  const reply = {
-    id: "555",
-    author: { id: "7", name: "Alice", avatar: "" },
-    at: "2026-11-02 10:00",
-    seq: 3,
-    body: '<div class="postmessage">hi<br>there <b>you</b></div>',
-  };
-  const quote = buildQuote("https://h/", { id: "9", title: "t" }, reply);
-  expect(quote.startsWith("[quote] hi\nthere you\n")).toBe(true);
-  expect(quote).toContain("[url=https://h/redirect.php?goto=findpost&pid=555&ptid=9]");
+test("reads the floor a findpost link opens", () => {
+  expect(floorFromLink("https://www.4d4y.com/forum/redirect.php?goto=findpost&pid=65983916&ptid=3111528")).toEqual({
+    pid: "65983916",
+    ptid: "3111528",
+  });
+  expect(floorFromLink("https://www.4d4y.com/forum/viewthread.php?tid=3111528")).toBe(undefined);
+  expect(floorFromLink("https://example.com/redirect.php?goto=findpost&pid=1&ptid=2")).toBe(undefined);
 });
 
 test("stops paging at an empty page or a repeated first item", () => {

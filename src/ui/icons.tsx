@@ -10,7 +10,13 @@ import themeSystemSvg from "./theme-system.svg";
 import themeLightSvg from "./theme-light.svg";
 import themeDarkSvg from "./theme-dark.svg";
 import downloadSvg from "./download.svg";
+import browserSvg from "./browser.svg";
 import type { AppearanceMode } from "./appearance";
+
+/** The open-in-browser icon, in `browser.svg`: the same thin line as the refresh arrow. */
+export function BrowserIcon(props: { size: number }) {
+  return <Image src={browserSvg} style={{ width: props.size, height: props.size }} />;
+}
 
 /** The update button's icon, in `download.svg`: a blue disc with a white down arrow. */
 export function DownloadIcon(props: { size: number }) {
@@ -132,6 +138,33 @@ function SpinningRefresh(props: { size: number; spinning: () => boolean; onIdle:
 }
 
 /** A speech bubble with a tail at its lower left, as an outline. */
+/** A bin, drawn in the same thin line as the bubble: its lid with a handle, and its body. */
+export function TrashIcon(props: { size: number }) {
+  return (
+    <Canvas
+      style={{ width: props.size, height: props.size }}
+      draw={(cx, size) => {
+        const s = size.width;
+        cx.beginPath();
+        cx.moveTo(s * 0.16, s * 0.28);
+        cx.lineTo(s * 0.84, s * 0.28);
+        cx.moveTo(s * 0.4, s * 0.28);
+        cx.lineTo(s * 0.4, s * 0.14);
+        cx.lineTo(s * 0.6, s * 0.14);
+        cx.lineTo(s * 0.6, s * 0.28);
+        cx.moveTo(s * 0.26, s * 0.28);
+        cx.lineTo(s * 0.3, s * 0.86);
+        cx.lineTo(s * 0.7, s * 0.86);
+        cx.lineTo(s * 0.74, s * 0.28);
+        cx.strokeStyle = palette().muted;
+        cx.lineWidth = LINE;
+        cx.lineJoin = "round";
+        cx.stroke();
+      }}
+    />
+  );
+}
+
 export function BubbleIcon(props: { size: number }) {
   return (
     <Canvas

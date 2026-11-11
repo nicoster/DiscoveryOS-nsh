@@ -1,5 +1,5 @@
 // The forum pages: the channel list and a channel's thread list.
-import { currentFormHash, currentUser, isLoginRequired, request } from "./client";
+import { currentFormHash, currentUser, findFloor, isLoginRequired, request } from "./client";
 import { parseBookmarks, parseChannels, parseMyReplies, parseMyThreads, parsePmConversation, parsePmUsers, parsePosts, parseProfile, parseReplies, parseSearchResults, parseThreadPageInfo, parseUser, type Author, type Channel, type PmMessage, type Post, type Profile, type Reply } from "./parse";
 import { formEncodeGb, htmlEntities } from "./encoding";
 
@@ -38,12 +38,78 @@ export async function searchThreads(keyword: string): Promise<Post[]> {
   return posts;
 }
 
+type ReplyPage = { title?: string; fid?: string; replies: Reply[] };
+
+// A thread page is reused for this long, so opening the same thread again does not ask the forum again.
+const REPLY_PAGE_TTL_MS = 2 * 60 * 1000;
+const replyPageCache = new Map<string, { page: ReplyPage; at: number }>();
+// Requests under way, by page: a second open while one is loading shares its answer.
+const replyPageInFlight = new Map<string, Promise<ReplyPage>>();
+// Bumped on every clear, so a request started before it does not store its page after it.
+let replyPageGeneration = 0;
+// Bumped per thread by `clearThreadReplyPages`, so a page of that thread asked before the
+// change is not stored after it.
+const threadGenerations = new Map<string, number>();
+
+/**
+ * Forgets every cached thread page. Replies differ by account, so this runs on sign-in and sign-out.
+ */
+export function clearReplyPageCache(): void {
+  replyPageGeneration++;
+  replyPageCache.clear();
+  replyPageInFlight.clear();
+}
+
+/** The cache keys (`tid:page`) of thread `tid` among `keys`: all of its pages. */
+export function threadPageKeys(keys: Iterable<string>, tid: string): string[] {
+  return [...keys].filter((key) => key.split(":")[0] === tid);
+}
+
+/**
+ * Forgets every cached page of the thread, and the requests for them under way. A reply, an
+ * edit or a delete changes any page of the thread, so all of them are asked again.
+ */
+export function clearThreadReplyPages(tid: string): void {
+  threadGenerations.set(tid, (threadGenerations.get(tid) ?? 0) + 1);
+  for (const key of threadPageKeys(replyPageCache.keys(), tid)) replyPageCache.delete(key);
+  for (const key of threadPageKeys(replyPageInFlight.keys(), tid)) replyPageInFlight.delete(key);
+}
+
 /** A thread page's replies, with the thread's title and forum when the page names them. */
-export async function loadReplyPage(tid: string, page = 1): Promise<{ title?: string; fid?: string; replies: Reply[] }> {
+export function loadReplyPage(tid: string, page = 1): Promise<ReplyPage> {
+  const key = `${tid}:${page}`;
+  const hit = replyPageCache.get(key);
+  if (hit && Date.now() - hit.at < REPLY_PAGE_TTL_MS) return Promise.resolve({ ...hit.page, replies: [...hit.page.replies] });
+  const pending = replyPageInFlight.get(key);
+  if (pending) return pending;
+  const generation = replyPageGeneration;
+  const threadGeneration = threadGenerations.get(tid) ?? 0;
+  const request = fetchReplyPage(tid, page)
+    .then((result) => {
+      // Failures are not stored (they throw above), so the next open asks again. A request
+      // whose in-flight entry was forgotten (a reply posted meanwhile) is not stored either.
+      const current = generation === replyPageGeneration && threadGeneration === (threadGenerations.get(tid) ?? 0);
+      if (current && replyPageInFlight.get(key) === request) replyPageCache.set(key, { page: result, at: Date.now() });
+      return { ...result, replies: [...result.replies] };
+    })
+    .finally(() => {
+      if (replyPageInFlight.get(key) === request) replyPageInFlight.delete(key);
+    });
+  replyPageInFlight.set(key, request);
+  return request;
+}
+
+async function fetchReplyPage(tid: string, page: number): Promise<ReplyPage> {
   const html = await request("GET", "viewthread.php", { query: [["tid", tid], ["page", String(page)]] });
   // Still the login page after the automatic sign-in (or with none): not a thread, so it fails.
   if (isLoginRequired(html)) throw new Error("Sign-in required to read the thread");
   return { ...parseThreadPageInfo(html), replies: parseReplies(html) };
+}
+
+/** The thread page holding floor `pid` of thread `tid`, with its replies and the thread's title and forum. */
+export async function loadFloorPage(tid: string, pid: string): Promise<{ page: number; title?: string; fid?: string; replies: Reply[] }> {
+  const { html, page } = await findFloor(tid, pid);
+  return { ...parseThreadPageInfo(html), page, replies: parseReplies(html) };
 }
 
 export async function loadReplies(tid: string, page = 1): Promise<Reply[]> {

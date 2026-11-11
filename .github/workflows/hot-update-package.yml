@@ -5,8 +5,7 @@ name: hot-update package
 
 on:
   push:
-    branches: [hot-update-prototype]
-    paths: [".github/workflows/hot-update-package.yml"]
+    branches: [hot-update]
   workflow_dispatch:
 
 permissions:

@@ -5,7 +5,7 @@ import { cleanup, createAnimatedValue, createMotion, effect, Overlay, type ViewR
 import { onEscape } from "./escape";
 import { ShortcutsHelp } from "./ShortcutsHelp";
 import { shortcutRows, useCommand } from "./commands";
-import { loadBookmarks, loadChannels, loadMyReplies, loadMyThreads, loadPmUsers, loadPosts, searchThreads } from "../discuz/forum";
+import { clearReplyPageCache, loadBookmarks, loadChannels, loadMyReplies, loadMyThreads, loadPmUsers, loadPosts, searchThreads } from "../discuz/forum";
 import { avatarPicture, userAvatar } from "../discuz/avatarCache";
 import { mergePage, type Channel, type Post } from "../discuz/parse";
 import { Thread } from "./Thread";
@@ -189,7 +189,8 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   const thread = signal<Post | null>(null);
   // Threads opened from a 4d4y link in the open thread, the last one shown in its column; Back pops one.
   // The threads column and its selection stay as they were.
-  const detour = signal<Post[]>([]);
+  // Threads opened from a link in the open thread, the last one shown. `focus` is the floor a link opened.
+  const detour = signal<(Post & { focus?: string })[]>([]);
   const posts = signal<Post[]>([]);
   const page = signal(1);
   const more = signal(false);
@@ -552,8 +553,8 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   }
 
   // A 4d4y thread link pressed in the open thread: its thread replaces the column's, until Back.
-  function openLinkedThread(tid: string) {
-    detour.set([...detour(), { id: tid, title: "" }]);
+  function openLinkedThread(tid: string, pid?: string) {
+    detour.set([...detour(), { id: tid, title: "", focus: pid }]);
   }
 
   function backFromLink() {
@@ -749,6 +750,8 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
   effect(() => {
     const signedIn = !!props.user();
     untracked(() => {
+      // Thread pages are per account too: sign-in and sign-out both drop them.
+      clearReplyPageCache();
       if (!signedIn) {
         listRequest++;
         // Search needs an account: its field and results go with the sign-out.
@@ -1095,6 +1098,7 @@ export function Forum(props: { footer?: (compact: boolean) => JSX.Element; user:
             fid={detour().length > 0 ? "" : (shownThread()!.fid ?? channel()?.id ?? "")}
             post={shownThread()!}
             signedIn={!!props.user()}
+            focusPid={detour().length > 0 ? detour()[detour().length - 1].focus : undefined}
             onOpenThread={openLinkedThread}
             onBack={detour().length > 0 ? backFromLink : undefined}
             shortcutsOpen={() => shortcutsOpen()}

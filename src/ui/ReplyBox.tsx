@@ -67,6 +67,8 @@ export function ReplyBox(props: {
   collapsible?: boolean;
   /** A Cancel button to the left of the send button, when given. */
   onCancel?: () => void;
+  /** Whether the Cancel button shows now, when it is given (it shows by default). */
+  cancelShown?: () => boolean;
 }) {
   const sendable = () => (props.canSend ? props.canSend() : props.draft().length > 0) && !props.sending() && !props.uploading?.();
   useCommand("reply.send", { enabled: sendable, run: () => props.onSend() });
@@ -187,18 +189,21 @@ export function ReplyBox(props: {
           }}
         />
         {props.uploading?.() ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingBottom: 8 }}>
+          // The labels share the send button's 26 pt box (its icon and padding), so they centre on the plane.
+          <View style={{ height: 26, flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Text style={{ fontSize: 12, color: palette().muted }}>Uploading…</Text>
             <RefreshIcon size={12} spinning={true} />
           </View>
         ) : null}
         {pictures().length > 0 && !props.uploading?.() ? (
-          <Text style={{ fontSize: 12, color: palette().muted, paddingBottom: 8 }}>
-            {`Uploaded ${pictures().length} ${pictures().length === 1 ? "file" : "files"}`}
-          </Text>
+          <View style={{ height: 26, justifyContent: "center" }}>
+            <Text style={{ fontSize: 12, color: palette().muted }}>
+              {`Uploaded ${pictures().length} ${pictures().length === 1 ? "file" : "files"}`}
+            </Text>
+          </View>
         ) : null}
-        {props.onCancel ? (
-          <View onPress={props.onCancel} accessibilityLabel="Cancel" style={{ paddingBottom: 8, paddingHorizontal: 6 }}>
+        {props.onCancel && (props.cancelShown?.() ?? true) ? (
+          <View onPress={props.onCancel} accessibilityLabel="Cancel" style={{ height: 26, justifyContent: "center", paddingHorizontal: 6 }}>
             <Text style={{ fontSize: 13, color: palette().muted }}>取消</Text>
           </View>
         ) : null}
