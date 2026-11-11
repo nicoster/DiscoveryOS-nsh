@@ -20,3 +20,6 @@ objc2-foundation = { version = "0.3", features = ["NSString", "NSURL"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security_Credentials"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+secret-service = { version = "5", features = ["rt-async-io-crypto-rust"] }

@@ -32,7 +32,9 @@ cannot reach on its own: GB18030 conversion (the forum's character set) and the 
 | Platform | Status |
 | --- | --- |
 | macOS | Primary target. Saved passwords use the macOS Keychain. |
-| Other NSH targets | Not verified. The Keychain module is macOS-only, so the password feature will not work elsewhere. |
+| Windows | Saved passwords use the Credential Manager. Not verified end to end. |
+| Linux | Saved passwords use the Secret Service (GNOME Keyring, KWallet) over the session D-Bus. Needs a running Secret Service; headless sessions without one fail. |
+| Other NSH targets | Not verified. The Keychain module has no backend there, so the password feature will not work. |
 
 ## Requirements
 
