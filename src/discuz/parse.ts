@@ -2,6 +2,8 @@
 // one match gives that match's groups, several give the whole matches),
 // `htmlDecoded`, and the channel and thread rows of the forum pages.
 
+import { forumTime } from "./timeAgo";
+
 /** `String.captureGroups(regex:skipFirst:)`. */
 export function captureGroups(text: string, pattern: string, skipFirst = false): string[] {
   const re = new RegExp(pattern, "gs");
@@ -48,6 +50,8 @@ export type Post = {
   lastReplyAt?: string;
   /** The forum (channel) the thread is in, when the page names it. */
   fid?: string;
+  /** A pinned (sticky) thread: its forum page lists it above the others, whatever its reply time. */
+  pinned?: boolean;
   /** The start of the user's own reply, as the page shows it (My Replies). */
   excerpt?: string;
 };
@@ -87,7 +91,23 @@ export function parsePosts(html: string): Post[] {
       lastReplyAt: col[8],
     });
   }
-  return posts;
+  return markPinned(posts);
+}
+
+/**
+ * Marks the pinned threads of a forum page. The page is sorted by last reply, newest first,
+ * so a pinned thread shows up as an old one above a newer one. The pinned threads are the
+ * top run before the last place where a thread's last reply is newer than the one above it.
+ */
+export function markPinned(posts: Post[]): Post[] {
+  const times = posts.map((p) => forumTime(p.lastReplyAt));
+  let boundary = 0;
+  for (let i = 1; i < posts.length; i++) {
+    const a = times[i - 1];
+    const b = times[i];
+    if (a !== null && b !== null && b > a) boundary = i;
+  }
+  return posts.map((p, i) => ({ ...p, pinned: i < boundary || undefined }));
 }
 
 /**
@@ -426,14 +446,20 @@ export function threadIdFromLink(href: string): string | undefined {
 
 /**
  * A thread page's title and forum (`fid`), as the page names them: the subject
- * heading, else the page `<title>` without its site suffix.
+ * heading, else the page `<title>` (`subject - channel - site`) without its
+ * site and channel suffixes.
  */
 export function parseThreadPageInfo(html: string): { title?: string; fid?: string } {
   const subject = /<span id="thread_subject">([\s\S]*?)<\/span>/.exec(html)?.[1];
   const pageTitle = /<title>([\s\S]*?)<\/title>/i.exec(html)?.[1];
-  const fromTitle = pageTitle?.replace(/\s+-\s+[^-]*$/, "");
-  const title = subject ? htmlDecode(subject.replace(/<[^>]*>/g, "")).trim() : fromTitle ? htmlDecode(fromTitle).trim() : undefined;
   const fid = /forumdisplay\.php\?fid=(\d+)/.exec(html)?.[1];
+  let fromTitle = pageTitle?.replace(/\s+-\s+[^-]*$/, "");
+  const channel = fid ? new RegExp(`forumdisplay\\.php\\?fid=${fid}"[^>]*>([^<]+)</a>`).exec(html)?.[1]?.trim() : undefined;
+  if (fromTitle && channel) {
+    const suffix = ` - ${htmlDecode(channel)}`;
+    if (htmlDecode(fromTitle).endsWith(suffix)) fromTitle = htmlDecode(fromTitle).slice(0, -suffix.length);
+  }
+  const title = subject ? htmlDecode(subject.replace(/<[^>]*>/g, "")).trim() : fromTitle ? htmlDecode(fromTitle).trim() : undefined;
   return { title: title || undefined, fid };
 }
 

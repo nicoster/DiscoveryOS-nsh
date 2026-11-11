@@ -13,6 +13,8 @@ export interface Palette {
   border: string;
   surface: string;
   selected: string;
+  /** The faint tint of a reply under the pointer; lighter than `selected`, which is for selections. */
+  replyHighlight: string;
   danger: string;
   button: string;
   buttonText: string;
@@ -27,6 +29,7 @@ const LIGHT: Palette = {
   border: "#d0d7de",
   surface: "#f6f8fa",
   selected: "#dbe4ff",
+  replyHighlight: "#f9fcfe",
   danger: "#cf222e",
   button: "#1f2328",
   buttonText: "#ffffff",
@@ -41,6 +44,7 @@ const DARK: Palette = {
   border: "#3d444d",
   surface: "#161b22",
   selected: "#1c2d4a",
+  replyHighlight: "#1a2334",
   danger: "#f85149",
   button: "#e6edf3",
   buttonText: "#0d1117",
@@ -70,11 +74,15 @@ export function applyAppearance(mode: AppearanceMode) {
   setColorScheme(mode);
 }
 
+/** Sets the setting and remembers it. */
+export function chooseAppearance(mode: AppearanceMode) {
+  applyAppearance(mode);
+  Storage.setItem(STORAGE_KEY, mode).catch(() => undefined);
+}
+
 /** Moves to the next setting (system → light → dark → system) and remembers it. */
 export function cycleAppearance() {
-  const next = MODES[(MODES.indexOf(appearanceMode()) + 1) % MODES.length];
-  applyAppearance(next);
-  Storage.setItem(STORAGE_KEY, next).catch(() => undefined);
+  chooseAppearance(MODES[(MODES.indexOf(appearanceMode()) + 1) % MODES.length]);
 }
 
 /** Applies the setting saved by an earlier launch, if any. */

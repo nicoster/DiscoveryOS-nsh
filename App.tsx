@@ -1,4 +1,4 @@
-import { createAnimatedValue, Image, mount, Overlay, signal, Text, View, type JSX, type YNode } from "nsh";
+import { createAnimatedValue, Image, mount, Overlay, signal, Text, View, type JSX, type ViewRef } from "nsh";
 import { Input } from "nsh/base";
 import { currentUser, login, logout, restoreSession } from "./src/discuz/client";
 import { loadProfile } from "./src/discuz/forum";
@@ -7,27 +7,44 @@ import { clearCredentials, loadCredentials, saveCredentials } from "./src/discuz
 import { hasSavedCookies } from "./src/discuz/cookies";
 import { Forum } from "./src/ui/Forum";
 import { notify, Toaster } from "./src/ui/toast";
-import { ThemeIcon } from "./src/ui/icons";
+import { DownloadIcon, ThemeIcon } from "./src/ui/icons";
+import { hint } from "./src/ui/Hint";
 import { hideSystemTitleBar } from "./src/ui/TitleBar";
+import { availableUpdate, installUpdate, startUpdateCheck } from "./src/update";
 import { appearanceMode, appearanceName, cycleAppearance, palette, restoreAppearance, type AppearanceMode } from "./src/ui/appearance";
+import { installMenu } from "./src/ui/commands";
+import { CookieImportDialog, cookieImportOpen, setOnCookiesImported } from "./src/ui/CookieImport";
+import { debugEnabled } from "./src/debugLog";
 
 // Port of `LoginView` (`Views/MainView.swift`) and `CurrentUserStore`: the forum is
 // shown to everyone; the session is restored on launch from the saved cookies, then
 // the saved password. Signing in is a dialog opened from the account row.
 
-function Button(props: { label: string; disabled?: boolean; onPress: () => void }) {
+// `secondary` is the quiet choice beside a primary one (Cancel): an outlined surface
+// instead of the solid button color, so the primary action is the one that stands out.
+function Button(props: { label: string; disabled?: boolean; secondary?: boolean; onPress: () => void }) {
+  const secondary = props.secondary === true;
   return (
     <View
       onPress={props.disabled ? undefined : props.onPress}
       style={{
-        backgroundColor: props.disabled ? palette().buttonDisabled : palette().button,
+        backgroundColor: secondary ? palette().surface : props.disabled ? palette().buttonDisabled : palette().button,
+        borderWidth: secondary ? 1 : 0,
+        borderColor: palette().border,
         borderRadius: 8,
         paddingVertical: 8,
         paddingHorizontal: 16,
         alignItems: "center",
       }}
     >
-      <Text style={{ color: palette().buttonText, fontSize: 14 }}>{props.label}</Text>
+      <Text
+        style={{
+          color: secondary ? palette().text : palette().buttonText,
+          fontSize: 14,
+        }}
+      >
+        {props.label}
+      </Text>
     </View>
   );
 }
@@ -39,6 +56,7 @@ function IconButton(props: { icon: JSX.Element; title: string; disabled?: boolea
     <View
       onPress={props.disabled ? undefined : props.onPress}
       accessibilityLabel={props.title}
+      tooltip={hint(props.title)}
       style={{
         width: 28,
         height: 28,
@@ -87,10 +105,10 @@ function MenuAction(props: { label: string; onPress: () => void }) {
   return (
     <View
       onPress={props.onPress}
-      onHoverIn={() => {
+      onMouseEnter={() => {
         hover.timing(1, { duration: 120 }).catch(() => undefined);
       }}
-      onHoverOut={() => {
+      onMouseLeave={() => {
         hover.timing(0, { duration: 120 }).catch(() => undefined);
       }}
       accessibilityLabel={props.label}
@@ -122,10 +140,11 @@ function App() {
   // The sign-in dialog, opened from the blank avatar while signed out.
   const dialogOpen = signal(false);
   // The account menu, opened from the avatar while signed in: the profile's fields and sign-out.
-  // `menuPanel` is the panel's node, which the outside-press overlay is anchored to.
+  // `avatarNode` is the avatar's node: the menu's overlay is placed against it, and sits above the
+  // whole window (a sibling column drawn later would otherwise cover a menu that is only absolute).
   const menuOpen = signal(false);
   const profile = signal<Profile | null>(null);
-  const menuPanel = signal<YNode | null>(null);
+  const avatarNode = signal<ViewRef | null>(null);
   // The sign-out confirmation, opened from the menu's Sign Out.
   const confirmOpen = signal(false);
 
@@ -193,20 +212,37 @@ function App() {
   }
 
   restoreAppearance();
+  installMenu();
 
-  // Restore the session once, on launch: the saved cookies first, then the
-  // saved password. Only a refused password clears what is saved.
-  const saved = loadCredentials();
-  if (saved || hasSavedCookies()) {
+  // Restores the session: the saved cookies first, then the saved password. Only a
+  // refused password clears what is saved. With nothing saved, or a login that no
+  // longer works, the sign-in dialog opens. Runs on launch and after a cookie import.
+  function restoreLogin() {
+    const saved = loadCredentials();
     busy.set(true);
     restoreSession(saved)
       .then((state) => {
-        if (state === "signed-in") showProfile(currentUser() ?? saved?.name ?? "");
-        else if (state === "signed-out" && saved) clearCredentials();
-        else if (state === "offline") notify("restore", "Offline: the saved login is kept.");
+        if (state === "signed-in") {
+          // The same completion as a sign-in: the profile shows and the sign-in dialog closes.
+          showProfile(currentUser() ?? saved?.name ?? "");
+          dialogOpen.set(false);
+        }
+        else if (state === "signed-out") {
+          if (saved) clearCredentials();
+          dialogOpen.set(true);
+        } else if (state === "offline") notify("restore", "Offline: the saved login is kept.");
       })
       .catch((e) => notify("restore", `Could not restore the login: ${e}`))
       .finally(() => busy.set(false));
+  }
+
+  // Debug: an import of cookies signs in with them at once.
+  setOnCookiesImported(restoreLogin);
+
+  if (loadCredentials() || hasSavedCookies()) {
+    restoreLogin();
+  } else {
+    dialogOpen.set(true);
   }
 
   // The account menu, above the avatar: the signed-in user's profile fields, then Sign Out.
@@ -215,12 +251,7 @@ function App() {
     const p = profile();
     return (
       <View
-        ref={(n: YNode | null) => menuPanel.set(n)}
         style={{
-          position: "absolute",
-          bottom: "100%",
-          left: 0,
-          marginBottom: 8,
           width: 240,
           padding: 12,
           gap: 6,
@@ -256,6 +287,18 @@ function App() {
     );
   };
 
+  // An update the user can apply now; a downloaded one also applies at the next start.
+  const applyUpdate = () => {
+    const manifest = availableUpdate();
+    if (!manifest) return;
+    notify("update", `正在更新到 ${manifest.version}…`);
+    installUpdate(manifest)
+      .then((result) => {
+        if (result.startsWith("err")) notify("update", "更新失败，请稍后再试");
+      })
+      .catch(() => notify("update", "更新失败，请稍后再试"));
+  };
+
   // The account row and its controls sit at the bottom of the channel column,
   // as the Claude Code sidebar keeps its account at the bottom left. Signed out,
   // the row is a blank avatar that opens the sign-in dialog.
@@ -264,29 +307,35 @@ function App() {
     <View style={{ borderTopWidth: 1, borderColor: palette().border }}>
       <View style={{ padding: compact ? 6 : 10, flexDirection: compact ? "column" : "row", alignItems: "center", gap: 8 }}>
         {user() ? (
-          // The avatar opens the account menu; the menu closes on a press outside it.
-          <View onPress={menuOpen() ? undefined : openMenu} accessibilityLabel="Account menu">
-            {avatar() ? (
-              <Image src={avatar()!} style={{ width: 24, height: 24, borderRadius: 12 }} />
-            ) : (
-              <View
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: palette().border,
-                  backgroundColor: palette().surface,
-                }}
-              />
-            )}
-            {menuOpen() ? accountMenu() : null}
-            {menuOpen() && menuPanel() ? (
-              <Overlay anchor={menuPanel()} onPressOutside={closeMenu}>
-                <View style={{ width: 0, height: 0 }} />
+          <>
+            {/* The avatar opens the account menu; the menu closes on a press outside it. */}
+            <View
+              ref={(n: ViewRef | null) => avatarNode.set(n)}
+              onPress={menuOpen() ? undefined : openMenu}
+              accessibilityLabel="Account menu"
+            >
+              {avatar() ? (
+                <Image src={avatar()!} style={{ width: 24, height: 24, borderRadius: 12 }} />
+              ) : (
+                <View
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: palette().border,
+                    backgroundColor: palette().surface,
+                  }}
+                />
+              )}
+            </View>
+            {/* An overlay, not an absolute view: it draws above the whole window, not just this column. */}
+            {menuOpen() && avatarNode() ? (
+              <Overlay anchor={avatarNode()} placement="top" align="start" offset={8} onPressOutside={closeMenu}>
+                {accountMenu()}
               </Overlay>
             ) : null}
-          </View>
+          </>
         ) : (
           <View
             onPress={() => dialogOpen.set(true)}
@@ -301,7 +350,21 @@ function App() {
             }}
           />
         )}
-        {compact ? null : <Text style={{ fontSize: 13, color: palette().text, flex: 1 }}>{user() ?? ""}</Text>}
+        {compact ? null : user() ? (
+          <Text style={{ fontSize: 13, color: palette().text, flex: 1 }}>{user()!}</Text>
+        ) : (
+          // Signed out, the name's place reads "Sign in" and opens the same dialog as the avatar.
+          <View onPress={() => dialogOpen.set(true)} accessibilityLabel="Sign in" style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, color: palette().text }}>Sign in</Text>
+          </View>
+        )}
+        {availableUpdate() ? (
+          <IconButton
+            icon={<DownloadIcon size={18} />}
+            title={`Update to ${availableUpdate()!.version}`}
+            onPress={applyUpdate}
+          />
+        ) : null}
         <IconButton icon={<ThemeIcon size={16} mode={appearanceMode} />} title={`Theme: ${appearanceName(appearanceMode())}`} onPress={cycleAppearance} />
       </View>
     </View>
@@ -336,18 +399,22 @@ function App() {
         <Input
           placeholder="Username"
           value={name()}
-          onChange={(text: string) => name.set(text)}
+          onChange={({ value: text }: { value: string }) => name.set(text)}
           style={{ height: 28, paddingHorizontal: 8, fontSize: 14 }}
         />
         <Input
           placeholder="Password"
           masked={true}
           value={pass()}
-          onChange={(text: string) => pass.set(text)}
+          onChange={({ value: text }: { value: string }) => pass.set(text)}
+          // Return in the password field signs in, like the default button in the Swift sheet.
+          onSubmit={() => {
+            if (!busy() && name().length > 0 && pass().length > 0) void signIn();
+          }}
           style={{ height: 28, paddingHorizontal: 8, fontSize: 14 }}
         />
         <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
-          <Button label="Cancel" onPress={() => dialogOpen.set(false)} />
+          <Button label="Cancel" secondary={true} onPress={() => dialogOpen.set(false)} />
           <Button
             label={busy() ? "Signing in…" : "Sign in"}
             disabled={busy() || name().length === 0 || pass().length === 0}
@@ -386,7 +453,7 @@ function App() {
         <Text style={{ fontSize: 15, fontWeight: 600, color: palette().text }}>Sign out?</Text>
         <Text style={{ fontSize: 13, color: palette().text }}>{`Sign out of ${user() ?? "this account"}?`}</Text>
         <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
-          <Button label="Cancel" onPress={() => confirmOpen.set(false)} />
+          <Button label="Cancel" secondary={true} onPress={() => confirmOpen.set(false)} />
           <Button
             label={busy() ? "Signing out…" : "Sign Out"}
             disabled={busy()}
@@ -400,8 +467,11 @@ function App() {
     </View>
   );
 
+  // The whole main interface is one selectable view, so every text in it can be selected,
+  // including text inside rows and buttons that take presses.
   return (
     <View
+      selectable={true}
       style={{
         flex: 1,
         paddingTop: "env(safe-area-inset-top)",
@@ -414,10 +484,11 @@ function App() {
       }}
     >
       <View style={{ flex: 1, alignSelf: "stretch" }}>
-        <Forum user={user} footer={(compact) => accountFooter(compact)} />
+        <Forum user={user} footer={(compact) => accountFooter(compact)} onSignInNeeded={() => dialogOpen.set(true)} />
       </View>
       {dialogOpen() ? signInDialog : null}
       {confirmOpen() ? signOutDialog : null}
+      {debugEnabled && cookieImportOpen() ? <CookieImportDialog /> : null}
       <Toaster />
 
     </View>
@@ -426,3 +497,4 @@ function App() {
 
 hideSystemTitleBar();
 mount(App);
+startUpdateCheck();

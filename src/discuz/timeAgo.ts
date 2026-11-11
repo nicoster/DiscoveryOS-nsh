@@ -25,6 +25,14 @@ export function forumDay(text: string | undefined): string | null {
   return `${y}-${mo}-${d}`;
 }
 
+/** The forum's time as milliseconds since the epoch, or null when it does not parse. */
+export function forumTime(text: string | undefined): number | null {
+  const match = PATTERN.exec((text ?? "").trim());
+  if (!match) return null;
+  const [y, mo, d, h, mi] = match.slice(1).map(Number);
+  return Date.UTC(y, mo - 1, d, h, mi) - BEIJING_OFFSET_MS;
+}
+
 /** The forum's time as a relative phrase; the text itself when it does not parse. */
 export function timeAgo(text: string, now: number = Date.now()): string {
   const match = PATTERN.exec(text.trim());

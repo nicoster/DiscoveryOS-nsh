@@ -1,0 +1,74 @@
+name: hot-update package
+
+# Builds the signed TSX update package (.nshpkg) and its manifest (latest.json) and uploads them as
+# workflow artifacts. It does not create a GitHub Release: publish those from the artifacts after review.
+
+on:
+  push:
+    branches: [hot-update-prototype]
+    paths: [".github/workflows/hot-update-package.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: macos-latest
+    env:
+      APP_VERSION: "1.0.3"
+      APP_BUILD: "5"
+      PACKAGE: "DiscoveryOS-1.0.3-build5.nshpkg"
+      RELEASE_URL: "https://github.com/nicoster/DiscoveryOS-nsh/releases/download/v1.0.3-b5"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the nsh CLI
+        run: |
+          curl -fsSL https://nsh.dev/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Check the nsh CLI
+        run: nsh --version
+
+      - name: Write the release signing key and certificate
+        env:
+          RELEASE_KEY: ${{ secrets.DISCOVERYOS_RELEASE_KEY }}
+          RELEASE_CERT: ${{ secrets.DISCOVERYOS_RELEASE_CERT }}
+        run: |
+          umask 077
+          printf '%s\n' "$RELEASE_KEY" > "$RUNNER_TEMP/release.secret"
+          printf '%s\n' "$RELEASE_CERT" > "$RUNNER_TEMP/release.cert"
+
+      - name: Publish the package
+        run: |
+          mkdir -p out
+          nsh publish \
+            --key "$RUNNER_TEMP/release.secret" \
+            --cert "$RUNNER_TEMP/release.cert" \
+            --build "$APP_BUILD" \
+            --app-version "$APP_VERSION" \
+            -o "out/$PACKAGE"
+
+      - name: Remove the signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.secret" "$RUNNER_TEMP/release.cert"
+
+      - name: Verify with the trusted root
+        run: nsh verify --root trust/root.pub "out/$PACKAGE"
+
+      - name: Write the manifest
+        run: |
+          sha=$(shasum -a 256 "out/$PACKAGE" | cut -d' ' -f1)
+          printf '{"id":"com.nickr.DiscoveryOS","build":%s,"version":"%s","url":"%s/%s","sha256":"%s"}\n' \
+            "$APP_BUILD" "$APP_VERSION" "$RELEASE_URL" "$PACKAGE" "$sha" > out/latest.json
+          cat out/latest.json
+
+      - name: Upload the package and manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: hot-update-${{ env.APP_VERSION }}-build${{ env.APP_BUILD }}
+          path: |
+            out/${{ env.PACKAGE }}
+            out/latest.json
+          if-no-files-found: error

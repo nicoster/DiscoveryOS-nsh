@@ -3,10 +3,12 @@
 // is one line until it has the focus or has text. Both screens share this one.
 // Pasted pictures show as thumbnails above the text; they have no remove control, and
 // they go with the reply. Cmd+Enter sends (Ctrl+Enter elsewhere); Enter adds a line.
-import { effect, Image, keymap, LayoutAnimation, reduceMotion, signal, Text, untracked, View, type PasteEvent } from "nsh";
+import { effect, Image, LayoutAnimation, reduceMotion, signal, Text, untracked, View, type PasteEvent } from "nsh";
+import { useCommand } from "./commands";
 import { Input } from "nsh/base";
 import { palette } from "./appearance";
 import { PlaneIcon, RefreshIcon } from "./icons";
+import { hint } from "./Hint";
 import type { PixelSize } from "./pixelSize";
 
 export type Attached = { id: string; kind: "image" | "file"; name: string; preview: string; size: PixelSize | null };
@@ -27,7 +29,7 @@ function Thumb(props: { src: string; size: PixelSize | null }) {
   // The box fixes the size; the picture fills it, so its own pixel size never takes over the layout.
   return (
     <View style={{ width: box.width, height: box.height, borderRadius: 6, overflow: "hidden" }}>
-      <Image src={props.src} resizeMode="contain" style={{ width: box.width, height: box.height }} />
+      <Image src={props.src} style={{ width: box.width, height: box.height, objectFit: "contain" }} />
     </View>
   );
 }
@@ -54,25 +56,33 @@ export function ReplyBox(props: {
   onPaste?: (e: PasteEvent) => void;
   /** Local files dropped on the box, as `file:` URLs. */
   onFileDrop?: (uris: string[]) => void;
+  /** The text field's handle, for the app to focus it (the `r` shortcut). */
+  fieldRef?: (field: { focus(): void }) => void;
+  /** The field's placeholder; "Reply" by default. */
+  placeholder?: string;
+  /** The field's height when the box is open, and the height it grows to; the reply's by default. */
+  minField?: number;
+  maxField?: number;
+  /** Whether the box folds to a chip while empty and unfocused (true by default). */
+  collapsible?: boolean;
+  /** A Cancel button to the left of the send button, when given. */
+  onCancel?: () => void;
 }) {
   const sendable = () => (props.canSend ? props.canSend() : props.draft().length > 0) && !props.sending() && !props.uploading?.();
-  keymap.bind(
-    "mod+enter",
-    () => {
-      if (sendable()) props.onSend();
-    },
-    { when: "always" },
-  );
+  useCommand("reply.send", { enabled: sendable, run: () => props.onSend() });
   const pictures = () => props.attachments?.() ?? [];
-  const fieldHeight = signal(MIN_FIELD);
+  const floor = props.minField ?? MIN_FIELD;
+  const ceiling = props.maxField ?? MAX_FIELD;
+  const fieldHeight = signal(floor);
   // The field is one line until it has the focus or has text; the send button stays in the
   // same row at the box's bottom-right corner in both states.
   const focused = signal(false);
   // A picture or an upload is content too, so the box stays open with them.
-  const collapsed = () => !focused() && props.draft().length === 0 && pictures().length === 0 && !props.uploading?.();
+  const collapsed = () =>
+    props.collapsible !== false && !focused() && props.draft().length === 0 && pictures().length === 0 && !props.uploading?.();
   // The field's ref: it takes the focus back out when a reply is posted (the draft is cleared then;
   // a failed send keeps the draft and the focus).
-  let field: { blur(): void } | undefined;
+  let field: { focus(): void; blur(): void } | undefined;
   let wasSending = false;
   effect(() => {
     const now = props.sending();
@@ -148,20 +158,21 @@ export function ReplyBox(props: {
       <View style={{ flexDirection: "row", alignItems: collapsed() ? "center" : "flex-end", gap: 8 }}>
         <Input
           ref={(n) => {
-            field = n as unknown as { blur(): void };
+            field = n as unknown as { focus(): void; blur(): void };
+            if (n) props.fieldRef?.(field);
           }}
-          placeholder="Reply"
+          placeholder={props.placeholder ?? "Reply"}
           multiline={true}
           value={props.draft()}
-          onChange={(text: string) => takeBack(text)}
+          onChange={({ value: text }: { value: string }) => takeBack(text)}
           onPaste={(e: PasteEvent) => {
             if (e.files.length > 0 || e.uris.length > 0) inserted = e.text || null;
             props.onPaste?.(e);
           }}
           onFocus={() => focused.set(true)}
           onBlur={() => focused.set(false)}
-          onContentSizeChange={(size: { height: number }) =>
-            fieldHeight.set(Math.min(MAX_FIELD, Math.max(MIN_FIELD, Math.ceil(size.height) + 8)))
+          onContentSizeChange={({ size }: { size: { height: number } }) =>
+            fieldHeight.set(Math.min(ceiling, Math.max(floor, Math.ceil(size.height) + 8)))
           }
           style={{
             flex: 1,
@@ -186,7 +197,17 @@ export function ReplyBox(props: {
             {`Uploaded ${pictures().length} ${pictures().length === 1 ? "file" : "files"}`}
           </Text>
         ) : null}
-        <View onPress={sendable() ? props.onSend : undefined} accessibilityLabel="Send" style={{ padding: 4, paddingRight: 7 }}>
+        {props.onCancel ? (
+          <View onPress={props.onCancel} accessibilityLabel="Cancel" style={{ paddingBottom: 8, paddingHorizontal: 6 }}>
+            <Text style={{ fontSize: 13, color: palette().muted }}>取消</Text>
+          </View>
+        ) : null}
+        <View
+          onPress={sendable() ? props.onSend : undefined}
+          accessibilityLabel="Send"
+          tooltip={hint("发送 (⌘Enter)")}
+          style={{ padding: 4, paddingRight: 7 }}
+        >
           {props.sending() ? <RefreshIcon size={18} spinning={true} /> : <PlaneIcon size={18} enabled={() => sendable()} />}
         </View>
       </View>

@@ -25,16 +25,18 @@ export function ThreadRow(props: {
   return (
     <View
       onPress={props.onPress}
-      onHoverIn={() => {
+      onMouseEnter={() => {
         hover.timing(1, { duration: 120 }).catch(() => undefined);
       }}
-      onHoverOut={() => {
+      onMouseLeave={() => {
         hover.timing(0, { duration: 120 }).catch(() => undefined);
       }}
       style={{
         padding: 8,
         borderRadius: 8,
         backgroundColor: props.selected() ? palette().selected : palette().surface,
+        // A pinned thread sits at the top whatever its reply time, so it is greyed to read as pinned.
+        opacity: props.item().pinned ? 0.5 : 1,
         flexDirection: "row",
         alignItems: "center",
         gap: 8,

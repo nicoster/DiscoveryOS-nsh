@@ -21,6 +21,36 @@ test("parses channels from the index page", () => {
   expect(parseChannels(html)).toEqual([{ id: "2", title: "Discovery", description: "desc here", newPosts: 5 }]);
 });
 
+test("marks the old threads above a newer one as pinned", () => {
+  // Sorted by last reply, newest first, except the pinned ones at the top, which are older.
+  const thread = (tid: string, lastReply: string) =>
+    `<tbody id="normalthread_${tid}"><tr><td class="folder"></td><td class="icon">&nbsp;</td>` +
+    `<th class="subject"><span id="thread_${tid}"><a href="viewthread.php?tid=${tid}&amp;extra=page%3D1">T${tid}</a></span></th>` +
+    '<td class="author"><cite><a href="space.php?uid=7">someone</a></cite><em>2022-6-13</em></td>' +
+    '<td class="nums"><strong>0</strong>/<em>108894</em></td>' +
+    `<td class="lastpost">\n<cite><a href="space.php?username=bob">Bob</a></cite><em><a href="redirect.php?tid=${tid}&amp;goto=lastpost#lastpost">${lastReply}</a></em></td>` +
+    "</tr></tbody>";
+  const html =
+    thread("1", "2022-6-13 22:57") + thread("2", "2022-1-20 11:35") + thread("3", "2026-11-10 12:06") + thread("4", "2026-11-09 08:00");
+  const posts = parsePosts(html);
+  expect(posts.map((p) => [p.id, p.pinned === true])).toEqual([
+    ["1", true],
+    ["2", true],
+    ["3", false],
+    ["4", false],
+  ]);
+});
+
+test("marks no thread pinned when the replies are in order", () => {
+  const thread = (tid: string, lastReply: string) =>
+    `<tr><td><span id="thread_${tid}"><a href="viewthread.php?tid=${tid}">T${tid}</a></span></td>` +
+    '<td class="author"><cite><a href="space.php?uid=7">someone</a></cite><em>2022-6-13</em></td>' +
+    '<td class="nums"><strong>0</strong>/<em>1</em></td>' +
+    `<td class="lastpost">\n<cite><a href="space.php?username=bob">Bob</a></cite><em><a href="redirect.php?tid=${tid}&amp;goto=lastpost#lastpost">${lastReply}</a></em></td></tr>`;
+  const posts = parsePosts(thread("1", "2026-11-10 12:06") + thread("2", "2026-11-09 08:00"));
+  expect(posts.every((p) => !p.pinned)).toBe(true);
+});
+
 test("parses threads from a forum page", () => {
   const row =
     '<tr><td><span class="x"><a href="viewthread.php?tid=99&amp;extra=1">Hello &amp; World</a></span>' +
@@ -367,6 +397,10 @@ test("reads the thread a 4d4y link opens, and nothing else", () => {
 test("reads a thread page's title and forum", () => {
   expect(parseThreadPageInfo('<span id="thread_subject">A &amp; <b>B</b></span><a href="forumdisplay.php?fid=7">x</a>')).toEqual({ title: "A & B", fid: "7" });
   expect(parseThreadPageInfo("<title>标题 - 4D4Y</title>")).toEqual({ title: "标题", fid: undefined });
+  // The page title is "subject - channel - site": the channel named by the fid link goes too.
+  expect(
+    parseThreadPageInfo('<title>家里的工具更加齐全了 - Discovery - 4D4Y</title><a href="forumdisplay.php?fid=2">Discovery</a>'),
+  ).toEqual({ title: "家里的工具更加齐全了", fid: "2" });
 });
 
 test("quoting keeps the words and drops the markup's line breaks and indentation", () => {

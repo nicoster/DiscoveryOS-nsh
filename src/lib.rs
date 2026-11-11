@@ -8,6 +8,7 @@ use nsh_core::prelude::*;
 mod codec;
 mod files;
 mod keychain;
+pub mod update;
 pub use codec::Gb18030;
 pub use files::Files;
 pub use keychain::Keychain;
@@ -21,6 +22,7 @@ fn native(registry: &mut Registry) {
         .module::<Gb18030>()
         .module::<Files>()
         .module::<Keychain>()
+        .module::<update::Updater>()
         .class::<Counter>();
 }
 

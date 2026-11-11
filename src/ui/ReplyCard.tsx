@@ -6,19 +6,41 @@ import { palette } from "./appearance";
 export function ReplyCard(props: {
   avatar?: string;
   name: string;
+  /** Whether the post is by the thread's author (楼主), shown as a tag beside the name. */
+  isOp?: boolean;
   meta: string;
   /** Controls at the end of the meta line, such as Quote. */
   trailing?: JSX.Element | null;
   body: JSX.Element;
+  /** Whether the post is highlighted (the pointer is over it, so `q` quotes it). */
+  highlighted?: () => boolean;
+  onHoverIn?: () => void;
+  onHoverOut?: () => void;
 }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 10, borderRadius: 8, backgroundColor: palette().surface }}>
+    <View
+      onMouseEnter={props.onHoverIn}
+      onMouseLeave={props.onHoverOut}
+      style={{
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 8,
+        padding: 10,
+        borderRadius: 8,
+        backgroundColor: props.highlighted?.() ? palette().replyHighlight : palette().surface,
+      }}
+    >
       {/* Two columns, as the Swift app: the avatar on the left, and beside it the meta line
           over the body, so the body starts under the name. */}
       {props.avatar ? <Image src={props.avatar} style={{ width: 36, height: 36, borderRadius: 6 }} /> : <View style={{ width: 36 }} />}
       <View style={{ flex: 1, gap: 6 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Text style={{ fontSize: 13, color: palette().text }}>{props.name}</Text>
+          {props.isOp ? (
+            <View style={{ paddingHorizontal: 2, paddingVertical: 1, borderRadius: 4, backgroundColor: palette().border }}>
+              <Text style={{ fontSize: 11, color: palette().muted }}>楼主</Text>
+            </View>
+          ) : null}
           <Text style={{ fontSize: 12, color: palette().muted }}>{props.meta}</Text>
           {props.trailing}
         </View>

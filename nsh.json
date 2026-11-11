@@ -1,8 +1,8 @@
 {
   "name": "DiscoveryOS",
   "id": "com.nickr.DiscoveryOS",
-  "version": "1.0.0",
-  "build": 1,
+  "version": "1.0.3",
+  "build": 5,
   "rust": ".",
   "capabilities": {
     "network": {
@@ -10,6 +10,8 @@
         "www.4d4y.com",
         "*.4d4y.com",
         "*.bilibili.com",
+        "b23.tv",
+        "bili2233.cn",
         "*.hdslb.com",
         "*.bilivideo.com",
         "*.douyin.com",
@@ -21,7 +23,9 @@
         "*.bytecdn.cn",
         "*.snssdk.com",
         "*.pstatp.com",
-        "*.zijieapi.com"
+        "*.zijieapi.com",
+        "github.com",
+        "*.githubusercontent.com"
       ]
     },
     "webview": {
@@ -44,6 +48,21 @@
     "openUrl": {
       "schemes": [
         "https"
+      ]
+    },
+    "clipboard": true,
+    "process": {
+      "env": [
+        "DEBUG",
+        "DISCUZ_COOKIES"
+      ]
+    },
+    "fs": {
+      "read": [
+        "${dataDir}"
+      ],
+      "write": [
+        "${dataDir}"
       ]
     }
   }

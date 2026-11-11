@@ -2,6 +2,7 @@
 // the player can take the video's own aspect ratio. Any failure falls back to 16:9.
 
 import { fetchLogged } from "../net/traffic";
+import type { BiliVideoId } from "./links";
 
 export type VideoShape = { width: number; height: number };
 
@@ -9,19 +10,20 @@ const FALLBACK: VideoShape = { width: 16, height: 9 };
 
 const shapes = new Map<string, Promise<VideoShape>>();
 
-/** The shape of a video by its BV id (`BV` and ten letters or digits). Cached per id. */
-export function videoShape(bvid: string): Promise<VideoShape> {
-  let shape = shapes.get(bvid);
+/** The shape of a video by its BV id or av number. Cached per id. */
+export function videoShape(video: BiliVideoId): Promise<VideoShape> {
+  const query = "bvid" in video ? `bvid=${video.bvid}` : `aid=${video.aid}`;
+  let shape = shapes.get(query);
   if (!shape) {
-    shape = load(bvid);
-    shapes.set(bvid, shape);
+    shape = load(query);
+    shapes.set(query, shape);
   }
   return shape;
 }
 
-async function load(bvid: string): Promise<VideoShape> {
+async function load(query: string): Promise<VideoShape> {
   try {
-    const { bytes } = await fetchLogged(`https://api.bilibili.com/x/web-interface/view?bvid=${bvid}`);
+    const { bytes } = await fetchLogged(`https://api.bilibili.com/x/web-interface/view?${query}`);
     const body = JSON.parse(new TextDecoder().decode(bytes));
     const dimension = body?.data?.dimension;
     const width = Number(dimension?.width);
