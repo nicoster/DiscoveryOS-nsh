@@ -1,7 +1,11 @@
 name: hot-update package
 
-# Builds the signed TSX update package (.nshpkg) and its manifest (latest.json) and uploads them as
-# workflow artifacts. It does not create a GitHub Release: publish those from the artifacts after review.
+# Every push to the hot-update branch builds and signs the TSX update package (.nshpkg), checks it
+# against the trusted root, uploads it with its manifest (latest.json) as a workflow artifact, and
+# publishes it as a public GitHub Release.
+#
+# Nothing is typed by hand: the version comes from nsh.json, and the build number is
+# BUILD_BASE + the run number, so it grows with every run.
 
 on:
   push:
@@ -9,18 +13,34 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   package:
     runs-on: macos-latest
     env:
-      APP_VERSION: "1.0.3"
-      APP_BUILD: "5"
-      PACKAGE: "DiscoveryOS-1.0.3-build5.nshpkg"
-      RELEASE_URL: "https://github.com/nicoster/DiscoveryOS-nsh/releases/download/v1.0.3-b5"
+      # Builds must grow past the build already installed in the field (nsh.json had build 5).
+      BUILD_BASE: "5"
+      APP_ID: "com.nickr.DiscoveryOS"
     steps:
       - uses: actions/checkout@v4
+
+      - name: Work out version, build, package and tag
+        id: meta
+        run: |
+          version=$(python3 -c 'import json; print(json.load(open("nsh.json"))["version"])')
+          build=$((BUILD_BASE + GITHUB_RUN_NUMBER))
+          package="DiscoveryOS-${version}-build${build}.nshpkg"
+          tag="v${version}-b${build}"
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}"
+          {
+            echo "version=$version"
+            echo "build=$build"
+            echo "package=$package"
+            echo "tag=$tag"
+            echo "url=$url"
+          } >> "$GITHUB_OUTPUT"
+          echo "version $version, build $build, tag $tag"
 
       - name: Install the nsh CLI
         run: |
@@ -40,13 +60,17 @@ jobs:
           printf '%s\n' "$RELEASE_CERT" > "$RUNNER_TEMP/release.cert"
 
       - name: Publish the package
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          BUILD: ${{ steps.meta.outputs.build }}
+          PACKAGE: ${{ steps.meta.outputs.package }}
         run: |
           mkdir -p out
           nsh publish \
             --key "$RUNNER_TEMP/release.secret" \
             --cert "$RUNNER_TEMP/release.cert" \
-            --build "$APP_BUILD" \
-            --app-version "$APP_VERSION" \
+            --build "$BUILD" \
+            --app-version "$VERSION" \
             -o "out/$PACKAGE"
 
       - name: Remove the signing key
@@ -54,20 +78,42 @@ jobs:
         run: rm -f "$RUNNER_TEMP/release.secret" "$RUNNER_TEMP/release.cert"
 
       - name: Verify with the trusted root
+        env:
+          PACKAGE: ${{ steps.meta.outputs.package }}
         run: nsh verify --root trust/root.pub "out/$PACKAGE"
 
       - name: Write the manifest
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          BUILD: ${{ steps.meta.outputs.build }}
+          PACKAGE: ${{ steps.meta.outputs.package }}
+          URL: ${{ steps.meta.outputs.url }}
         run: |
           sha=$(shasum -a 256 "out/$PACKAGE" | cut -d' ' -f1)
-          printf '{"id":"com.nickr.DiscoveryOS","build":%s,"version":"%s","url":"%s/%s","sha256":"%s"}\n' \
-            "$APP_BUILD" "$APP_VERSION" "$RELEASE_URL" "$PACKAGE" "$sha" > out/latest.json
+          printf '{"id":"%s","build":%s,"version":"%s","url":"%s/%s","sha256":"%s"}\n' \
+            "$APP_ID" "$BUILD" "$VERSION" "$URL" "$PACKAGE" "$sha" > out/latest.json
           cat out/latest.json
 
       - name: Upload the package and manifest
         uses: actions/upload-artifact@v4
         with:
-          name: hot-update-${{ env.APP_VERSION }}-build${{ env.APP_BUILD }}
+          name: hot-update-${{ steps.meta.outputs.version }}-build${{ steps.meta.outputs.build }}
           path: |
-            out/${{ env.PACKAGE }}
+            out/${{ steps.meta.outputs.package }}
             out/latest.json
           if-no-files-found: error
+
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          BUILD: ${{ steps.meta.outputs.build }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          PACKAGE: ${{ steps.meta.outputs.package }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh release create "$TAG" "out/$PACKAGE" out/latest.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "DiscoveryOS $VERSION (build $BUILD)" \
+            --notes "Built and signed by CI run $RUN_URL"
