@@ -1,0 +1,26 @@
+README.md
+  s_b0c0489f13e4f8::t_0acbb90c0e89ab 35-37
+src/keychain.rs
+  s_b0c0489f13e4f8::t_10edf056bbc758 6-7
+  s_b0c0489f13e4f8::t_30b0e65097844a 141-202
+Cargo.lock
+  s_b0c0489f13e4f8::t_a611322bcf4296 106-161,173-242,378-390,568-576,991-1017,1046,1179-1197,1358-1369,1810-1818,1902,2037-2099,2164-2173,2234-2239,2373-2383,2420-2433,2964-2982,3055-3065,3154-3163,3375-3387,3518,3522-3532,3538-3540,3584-3594,3680-3690,4134-4203,4323-4363
+Cargo.toml
+  s_b0c0489f13e4f8::t_5d8400bacb5a5c 23-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e4196060161257de6b1a46ac958f50c3a04e2441",
+  "prompts": {},
+  "sessions": {
+    "s_b0c0489f13e4f8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b93902f9-2e8d-44e2-aae9-0defd5dfb910",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Nick Xiao <nick.xiao@zoom.us>"
+    }
+  }
+}
