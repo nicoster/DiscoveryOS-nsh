@@ -21,7 +21,6 @@ export function BiliShortPlayer(props: { url: string }) {
       url={props.url}
       resolve={resolveBiliShort}
       play={(video) => <BiliPlayer video={video} />}
-      pending="解析 B 站短链接…"
       fallbackSize={{ aspectRatio: 16 / 9 }}
     />
   );

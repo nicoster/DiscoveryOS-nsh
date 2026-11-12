@@ -19,7 +19,6 @@ export function DouyinShortPlayer(props: { url: string }) {
       url={props.url}
       resolve={resolveDouyinShort}
       play={(id) => <DouyinPlayer id={id} />}
-      pending="解析抖音短链接…"
       fallbackSize={{ height: PLAYER_HEIGHT }}
     />
   );

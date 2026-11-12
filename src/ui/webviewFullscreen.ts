@@ -9,18 +9,22 @@ const LOOK_EVERY_MS = 500;
 const LOOK_FOR_MS = 15_000;
 
 export const VIDEO_FULLSCREEN_SCRIPT = `(() => {
-  // Labels of a fullscreen button, in Chinese and English, and Bilibili's own class for it.
+  // Labels of a fullscreen button, in Chinese and English, and the classes the Bilibili and
+  // Douyin (xgplayer) players give theirs. Douyin's button has no label, only these classes.
   const SELECTORS = [
     '[aria-label*="全屏"]',
     '[title*="全屏"]',
     '.bpx-player-ctrl-full',
     '[aria-label*="fullscreen" i]',
     '[title*="fullscreen" i]',
+    '.xg-get-fullscreen',
+    '.xgplayer-fullscreen',
+    '.douyin-player-fullscreen',
   ];
   // "Exit fullscreen" carries the same words: it is not the button to press.
   const EXIT = /退出|exit/i;
 
-  const label = (el) => (el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute('title') || '');
+  const label = (el) => (el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute('title') || '') + ' ' + (el.getAttribute('class') || '');
 
   function findButton() {
     for (const selector of SELECTORS) {
