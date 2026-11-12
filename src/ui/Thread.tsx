@@ -369,8 +369,9 @@ export function Thread(props: {
         desktop={{ windowDrag: true }}
         style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, paddingTop: titleBarShown() ? 18 : 20 }}
       >
+        {/* Back sits in the row, first, so the icons after it move right with it. */}
         {props.onBack ? (
-          <View onPress={props.onBack} accessibilityLabel="Back" style={{ position: "absolute", left: 12, paddingVertical: 4, paddingHorizontal: 6 }}>
+          <View onPress={props.onBack} accessibilityLabel="Back" style={{ paddingVertical: 4, paddingHorizontal: 6 }}>
             <Text style={{ fontSize: 13, color: palette().muted }}>{"‹ Back"}</Text>
           </View>
         ) : null}
