@@ -11,11 +11,17 @@ import themeLightSvg from "./theme-light.svg";
 import themeDarkSvg from "./theme-dark.svg";
 import downloadSvg from "./download.svg";
 import chromeSvg from "./chrome.svg";
+import linkSvg from "./link.svg";
 import type { AppearanceMode } from "./appearance";
 
 /** The open-in-browser icon, in `chrome.svg`: the Chrome logo (Simple Icons, CC0), in the muted theme color. */
 export function BrowserIcon(props: { size: number }) {
   return <Image src={chromeSvg} style={{ width: props.size, height: props.size }} />;
+}
+
+/** The copy-link icon, in `link.svg`: the same thin line as the refresh arrow. */
+export function LinkIcon(props: { size: number }) {
+  return <Image src={linkSvg} style={{ width: props.size, height: props.size }} />;
 }
 
 /** The update button's icon, in `download.svg`: a blue disc with a white down arrow. */

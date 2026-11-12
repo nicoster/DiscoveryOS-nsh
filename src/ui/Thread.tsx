@@ -1,6 +1,6 @@
 // A thread's replies, pages, quote and reply draft (`PostDetailView` of the
 // Swift app). The draft is kept per thread in the app's storage.
-import { keymap, List, signal, Storage, Text, View, type PasteEvent, type ListRef } from "nsh";
+import { Clipboard, keymap, List, signal, Storage, Text, View, type PasteEvent, type ListRef } from "nsh";
 import { Dialog, TextView } from "nsh/base";
 import { currentUser, deletePost, editPost, HOST, loadEditForm, postReply, ReplyRefused, uploadAttachment, uploadEditAttachment, type EditForm } from "../discuz/client";
 import { bookmarkPost, clearThreadReplyPages, loadFloorPage, loadReplyPage, removeBookmark } from "../discuz/forum";
@@ -15,7 +15,7 @@ import { LoadingBar } from "./LoadingBar";
 import { notify } from "./toast";
 import { palette } from "./appearance";
 import { titleBarShown } from "./TitleBar";
-import { BrowserIcon, BubbleIcon, PencilIcon, StarIcon, TrashIcon } from "./icons";
+import { BrowserIcon, BubbleIcon, LinkIcon, PencilIcon, StarIcon, TrashIcon } from "./icons";
 import { ReplyCard } from "./ReplyCard";
 import { ReplyBox } from "./ReplyBox";
 import { attachmentTag, createAttachments } from "./attachments";
@@ -394,6 +394,16 @@ export function Thread(props: {
             style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
           >
             <BrowserIcon size={16} />
+          </View>
+          <View
+            onPress={() => {
+              Clipboard.writeText(threadUrl());
+              notify("copy-link", "Link copied.");
+            }}
+            accessibilityLabel="Copy the post link"
+            tooltip={hint("复制帖子链接")}
+          >
+            <LinkIcon size={16} />
           </View>
         </View>
         {/* The title is centred in the space right of the icons; a long one is cut off at the icons' edge,
