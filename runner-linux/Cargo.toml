@@ -11,9 +11,9 @@ name = "DiscoveryOS"
 path = "main.rs"
 
 [dependencies]
-nsh-core = { version = "=0.4.0" }
-nsh-base = { version = "=0.4.0", features = ["highlight"] }
-nsh-platform-linux = { version = "=0.4.0" }
+nsh-core = { version = "=0.5.0" }
+nsh-base = { version = "=0.5.0", features = ["highlight"] }
+nsh-platform-linux = { version = "=0.5.0" }
 nsh-app-discoveryos = { path = ".." }
 serde_json = "1"
 log = "0.4"

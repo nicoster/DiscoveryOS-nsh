@@ -16,7 +16,7 @@ import { SearchIcon, SidebarIcon } from "./icons";
 
 /** Hides the system's title bar, so the app draws its own (`TitleBar`). Call once at launch. */
 export function hideSystemTitleBar(): void {
-  if (isAvailable) Window.setTitleBar({ style: "hidden", height: 44 });
+  if (isAvailable) Window.get("main")?.set({ titleBar: { style: "hidden", height: 44 } });
 }
 
 /** Fades the next change of the search field: 240 ms, opacity only, so nothing slides or moves while the
