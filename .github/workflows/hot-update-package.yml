@@ -22,6 +22,7 @@ jobs:
       # Builds must grow past the build already installed in the field (nsh.json had build 5).
       BUILD_BASE: "13"
       APP_ID: "com.nickr.DiscoveryOS"
+      NSH_VERSION: "v0.4.0"
     steps:
       - uses: actions/checkout@v4
 
@@ -42,11 +43,28 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "version $version, build $build, tag $tag"
 
+      # The nsh CLI is pinned to the runtime the apps embed (nsh 0.4.0): a newer CLI stamps packages
+      # with a higher min_runtime that devices on 0.4.0 refuse to load. The install is cached per
+      # pinned version, so a run only downloads it again when NSH_VERSION changes.
+      - name: Restore the nsh CLI cache
+        id: nsh-cache
+        uses: actions/cache@v4
+        with:
+          # nsh finds its runtimes next to bin/nsh, so the whole ~/.nsh directory is cached.
+          path: |
+            ~/.nsh
+          key: nsh-${{ env.NSH_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+
       - name: Install the nsh CLI
+        if: steps.nsh-cache.outputs.cache-hit != 'true'
+        run: curl -fsSL https://nsh.dev/install.sh | sh
+
+      - name: Link the nsh CLI into PATH
         run: |
-          # Pinned to the runtime the apps embed (nsh 0.4.0): a newer CLI stamps packages with a
-          # higher min_runtime that devices on 0.4.0 refuse to load.
-          NSH_VERSION=v0.4.0 curl -fsSL https://nsh.dev/install.sh | NSH_VERSION=v0.4.0 sh
+          # The installer links ~/.local/bin/nsh; a cache restore does not, so link it every run.
+          test -x "$HOME/.nsh/bin/nsh" || { echo "nsh is not installed at $HOME/.nsh/bin/nsh"; exit 1; }
+          mkdir -p "$HOME/.local/bin"
+          ln -sf "$HOME/.nsh/bin/nsh" "$HOME/.local/bin/nsh"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Check the nsh CLI
