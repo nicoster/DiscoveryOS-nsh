@@ -73,6 +73,19 @@ jobs:
           path: ~/.nsh
           key: nsh-${{ env.NSH_VERSION }}-${{ runner.os }}-${{ runner.arch }}
 
+      - name: Restore the Rust build cache
+        uses: actions/cache@v4
+        with:
+          # Incremental compilation: the compiled dependencies and the crate's own artifacts.
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+            runner/target
+          key: rust-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock', 'runner/Cargo.lock') }}
+          restore-keys: |
+            rust-${{ runner.os }}-${{ runner.arch }}-
+
       - name: Install the nsh CLI
         if: steps.nsh-cache.outputs.cache-hit != 'true'
         run: curl -fsSL https://nsh.dev/install.sh | sh
@@ -147,6 +160,19 @@ jobs:
           path: ~/AppData/Local/nsh
           key: nsh-${{ env.NSH_VERSION }}-${{ runner.os }}-${{ runner.arch }}
 
+      - name: Restore the Rust build cache
+        uses: actions/cache@v4
+        with:
+          # Incremental compilation: the compiled dependencies and the crate's own artifacts.
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+            runner-windows/target
+          key: rust-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock', 'runner-windows/Cargo.lock') }}
+          restore-keys: |
+            rust-${{ runner.os }}-${{ runner.arch }}-
+
       - name: Install the nsh CLI
         if: steps.nsh-cache.outputs.cache-hit != 'true'
         shell: pwsh
@@ -196,6 +222,19 @@ jobs:
         with:
           path: ~/.nsh
           key: nsh-${{ env.NSH_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Restore the Rust build cache
+        uses: actions/cache@v4
+        with:
+          # Incremental compilation: the compiled dependencies and the crate's own artifacts.
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+            runner-linux/target
+          key: rust-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            rust-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Install the nsh CLI
         if: steps.nsh-cache.outputs.cache-hit != 'true'
