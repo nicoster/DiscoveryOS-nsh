@@ -4,9 +4,14 @@ name: app release
 # runner (a package only embeds its icon and runs on the host it is built on), then publishes one GitHub
 # Release with all three assets. Nothing waits for approval.
 #
-# The version and build come from nsh.json. A release tag is app-v<version>-b<build>, so each push needs a
-# new build in nsh.json: the release job fails if the tag already exists. Releases are never marked Latest,
-# because the hot-update channel reads the Latest release (see hot-update-package.yml).
+# The version comes from nsh.json. The build is the Unix time (seconds) of the run: the meta job computes
+# it once, and every job stamps it into its own checkout's nsh.json before packaging. The stamp is not
+# committed, so nsh.json in git keeps its last hand-set value. A release tag is app-v<version>-b<build>,
+# which is unique per run, so the release job never overwrites a release.
+# Runs are serialized so two builds never share a second.
+#
+# Releases are never marked Latest, because the hot-update channel reads the Latest release (see
+# hot-update-package.yml).
 #
 # ci-dryrun is a test branch: it builds the three packages and uploads them as workflow artifacts, but
 # publishes nothing.
@@ -19,15 +24,46 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: app-release-build
+  cancel-in-progress: false
+
 env:
   # The apps embed nsh 0.5.0 (Cargo.toml); a newer CLI stamps higher runtime requirements.
   NSH_VERSION: v0.5.0
 
 jobs:
-  macos:
-    runs-on: macos-latest
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      build: ${{ steps.meta.outputs.build }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Work out version and build
+        id: meta
+        run: |
+          version=$(python3 -c 'import json; print(json.load(open("nsh.json"))["version"])')
+          build=$(date -u +%s)
+          {
+            echo "version=$version"
+            echo "build=$build"
+          } >> "$GITHUB_OUTPUT"
+          echo "version $version, build $build"
+
+  macos:
+    runs-on: macos-latest
+    needs: meta
+    env:
+      BUILD: ${{ needs.meta.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stamp the build into nsh.json
+        run: |
+          python3 -c 'import os, pathlib, re; p = pathlib.Path("nsh.json"); s = p.read_text(encoding="utf-8"); p.write_text(re.sub(r"\"build\":\s*\d+", "\"build\": " + os.environ["BUILD"], s, count=1), encoding="utf-8")'
+          grep -n '"build"' nsh.json
 
       - name: Restore the nsh CLI cache
         id: nsh-cache
@@ -88,8 +124,20 @@ jobs:
 
   windows:
     runs-on: windows-latest
+    needs: meta
+    env:
+      BUILD: ${{ needs.meta.outputs.build }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Stamp the build into nsh.json
+        shell: pwsh
+        run: |
+          $path = Join-Path (Get-Location) 'nsh.json'
+          $text = [IO.File]::ReadAllText($path)
+          $text = [regex]::Replace($text, '"build":\s*\d+', ('"build": ' + $env:BUILD), 1)
+          [IO.File]::WriteAllText($path, $text)
+          Select-String -Path $path -Pattern '"build"'
 
       - name: Restore the nsh CLI cache
         id: nsh-cache
@@ -127,8 +175,16 @@ jobs:
 
   linux:
     runs-on: ubuntu-latest
+    needs: meta
+    env:
+      BUILD: ${{ needs.meta.outputs.build }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Stamp the build into nsh.json
+        run: |
+          python3 -c 'import os, pathlib, re; p = pathlib.Path("nsh.json"); s = p.read_text(encoding="utf-8"); p.write_text(re.sub(r"\"build\":\s*\d+", "\"build\": " + os.environ["BUILD"], s, count=1), encoding="utf-8")'
+          grep -n '"build"' nsh.json
 
       # nsh 0.5.0 links GStreamer (videos) as well, so its -dev packages are needed.
       - name: Install GTK and GStreamer development packages
@@ -164,11 +220,12 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: [macos, windows, linux]
+    needs: [meta, macos, windows, linux]
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+      BUILD: ${{ needs.meta.outputs.build }}
     steps:
-      - uses: actions/checkout@v4
-
       - uses: actions/download-artifact@v4
         with:
           path: assets
@@ -180,18 +237,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          version=$(python3 -c 'import json; print(json.load(open("nsh.json"))["version"])')
-          build=$(python3 -c 'import json; print(json.load(open("nsh.json"))["build"])')
-          tag="app-v${version}-b${build}"
+          tag="app-v${VERSION}-b${BUILD}"
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "error: release $tag already exists; bump build in nsh.json" >&2
+            echo "error: release $tag already exists" >&2
             exit 1
           fi
           gh release create "$tag" assets/* \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --latest=false \
-            --title "DiscoveryOS $version (build $build) - app" \
+            --title "DiscoveryOS $VERSION (build $BUILD) - app" \
             --notes "Built and published by CI run $RUN_URL"
 
       - name: Dry run (ci-dryrun publishes nothing)
