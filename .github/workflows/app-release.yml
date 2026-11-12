@@ -29,10 +29,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Restore the nsh CLI cache
+        id: nsh-cache
+        uses: actions/cache@v4
+        with:
+          # nsh finds its runtimes next to bin/nsh, so the whole ~/.nsh directory is cached.
+          path: ~/.nsh
+          key: nsh-${{ env.NSH_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+
       - name: Install the nsh CLI
+        if: steps.nsh-cache.outputs.cache-hit != 'true'
+        run: curl -fsSL https://nsh.dev/install.sh | sh
+
+      - name: Put the nsh CLI on PATH
         run: |
-          curl -fsSL https://nsh.dev/install.sh | sh
+          # The installer links ~/.local/bin/nsh; a cache restore does not, so link it every run.
+          test -x "$HOME/.nsh/bin/nsh" || { echo "nsh is not installed at $HOME/.nsh/bin/nsh"; exit 1; }
+          mkdir -p "$HOME/.local/bin"
+          ln -sf "$HOME/.nsh/bin/nsh" "$HOME/.local/bin/nsh"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          nsh --version
 
       - name: Check for the signing certificate
         env:
@@ -75,12 +91,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Restore the nsh CLI cache
+        id: nsh-cache
+        uses: actions/cache@v4
+        with:
+          # The installer puts nsh in %LOCALAPPDATA%\nsh, with its runtimes next to bin\nsh.exe.
+          path: ~/AppData/Local/nsh
+          key: nsh-${{ env.NSH_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+
       - name: Install the nsh CLI
+        if: steps.nsh-cache.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/longbridge/nsh/releases/download/$env:NSH_VERSION/install.ps1" -OutFile "$env:RUNNER_TEMP\install-nsh.ps1"
           & "$env:RUNNER_TEMP\install-nsh.ps1"
-          Add-Content -Path $env:GITHUB_PATH -Value "$env:LOCALAPPDATA\nsh\bin"
+
+      - name: Put the nsh CLI on PATH
+        shell: pwsh
+        run: |
+          # A cache restore does not touch the user PATH, so add the bin directory every run.
+          $bin = Join-Path $env:LOCALAPPDATA 'nsh\bin'
+          if (-not (Test-Path (Join-Path $bin 'nsh.exe'))) { throw "nsh is not installed at $bin" }
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
+          & (Join-Path $bin 'nsh.exe') --version
 
       - name: Package Windows
         shell: pwsh
@@ -100,10 +133,25 @@ jobs:
       - name: Install GTK development packages
         run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libjavascriptcoregtk-6.0-dev libwebkitgtk-6.0-dev
 
+      - name: Restore the nsh CLI cache
+        id: nsh-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.nsh
+          key: nsh-${{ env.NSH_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+
       - name: Install the nsh CLI
+        if: steps.nsh-cache.outputs.cache-hit != 'true'
+        run: curl -fsSL https://nsh.dev/install.sh | sh
+
+      - name: Put the nsh CLI on PATH
         run: |
-          curl -fsSL https://nsh.dev/install.sh | sh
+          # The installer links ~/.local/bin/nsh; a cache restore does not, so link it every run.
+          test -x "$HOME/.nsh/bin/nsh" || { echo "nsh is not installed at $HOME/.nsh/bin/nsh"; exit 1; }
+          mkdir -p "$HOME/.local/bin"
+          ln -sf "$HOME/.nsh/bin/nsh" "$HOME/.local/bin/nsh"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          nsh --version
 
       - name: Package Linux
         run: ./scripts/package-linux.sh
