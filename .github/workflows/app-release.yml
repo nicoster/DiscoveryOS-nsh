@@ -130,8 +130,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install GTK development packages
-        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libjavascriptcoregtk-6.0-dev libwebkitgtk-6.0-dev
+      # nsh 0.5.0 links GStreamer (videos) as well, so its -dev packages are needed.
+      - name: Install GTK and GStreamer development packages
+        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libjavascriptcoregtk-6.0-dev libwebkitgtk-6.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 
       - name: Restore the nsh CLI cache
         id: nsh-cache
