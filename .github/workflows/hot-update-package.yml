@@ -19,8 +19,8 @@ jobs:
   package:
     runs-on: macos-latest
     env:
-      # Builds must grow past the build already installed in the field (nsh.json had build 5).
-      BUILD_BASE: "13"
+      # Builds must grow past the build already installed in the field (the full app release is build 26).
+      BUILD_BASE: "26"
       APP_ID: "com.nickr.DiscoveryOS"
       NSH_VERSION: "v0.4.0"
     steps:
