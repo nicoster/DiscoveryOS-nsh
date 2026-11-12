@@ -5,6 +5,7 @@
 // (`mod+r`) are bound the same way, so every shortcut has one path.
 import { Clipboard, cleanup, effect, keymap, signal, untracked } from "nsh";
 import { isAvailable, Menu, type MenuItem, type MenuRole } from "nsh/desktop";
+import { openAbout } from "./AboutDialog";
 import { debugEnabled } from "../debugLog";
 import { exportCookies } from "../discuz/cookies";
 import { appearanceMode, appearanceName, chooseAppearance, type AppearanceMode } from "./appearance";
@@ -130,6 +131,11 @@ function role(name: MenuRole): MenuItem {
   return { role: name };
 }
 
+// About opens the app's own dialog (build details, last check) on every platform.
+function aboutItem(): MenuItem {
+  return { label: "About DiscoveryOS", onSelect: openAbout };
+}
+
 function submenu(label: string, items: MenuItem[]): MenuItem {
   return { label, submenu: items };
 }
@@ -164,7 +170,7 @@ function appearanceItem(mode: AppearanceMode): MenuItem {
 // The menu bar, top to bottom. Its items are built each time it is set, so their state is current.
 export function menuBar(): MenuItem[] {
   return [
-    submenu("DiscoveryOS", [role("about"), SEPARATOR, role("hide"), role("hideOthers"), role("showAll"), SEPARATOR, role("quit")]),
+    submenu("DiscoveryOS", [aboutItem(), SEPARATOR, role("hide"), role("hideOthers"), role("showAll"), SEPARATOR, role("quit")]),
     submenu("Edit", [role("undo"), role("redo"), SEPARATOR, role("cut"), role("copy"), role("paste"), role("selectAll")]),
     submenu("Forum", [item("forum.search"), item("forum.refresh"), SEPARATOR, item("forum.next"), item("forum.prev"), item("forum.compose")]),
     submenu("Thread", [
@@ -179,11 +185,11 @@ export function menuBar(): MenuItem[] {
     ]),
     submenu("View", [submenu("Appearance", APPEARANCES.map(appearanceItem))]),
     submenu("Window", [role("minimize"), role("zoom"), role("toggleFullScreen"), SEPARATOR, role("close")]),
-    submenu("Help", [item("forum.shortcuts"), ...(debugEnabled ? [SEPARATOR, ...debugItems()] : [])]),
+    submenu("Help", [aboutItem(), SEPARATOR, item("forum.shortcuts"), ...(debugEnabled ? [SEPARATOR, ...debugItems()] : [])]),
   ];
 }
 
-// Debug (only with DEBUG=1): copy the forum session's cookies out, and import them back from the clipboard.
+// Debug (only with DISCO_DEBUG set): copy the forum session's cookies out, and import them back from the clipboard.
 // The text is a live session credential: it is never logged or shown.
 function debugItems(): MenuItem[] {
   return [

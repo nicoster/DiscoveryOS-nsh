@@ -14,6 +14,7 @@ import { availableUpdate, installUpdate, startUpdateCheck } from "./src/update";
 import { appearanceMode, appearanceName, cycleAppearance, palette, restoreAppearance, type AppearanceMode } from "./src/ui/appearance";
 import { installMenu } from "./src/ui/commands";
 import { CookieImportDialog, cookieImportOpen, setOnCookiesImported } from "./src/ui/CookieImport";
+import { AboutDialog, aboutOpen } from "./src/ui/AboutDialog";
 import { debugEnabled } from "./src/debugLog";
 
 // Port of `LoginView` (`Views/MainView.swift`) and `CurrentUserStore`: the forum is
@@ -489,6 +490,7 @@ function App() {
       {dialogOpen() ? signInDialog : null}
       {confirmOpen() ? signOutDialog : null}
       {debugEnabled && cookieImportOpen() ? <CookieImportDialog /> : null}
+      {aboutOpen() ? <AboutDialog /> : null}
       <Toaster />
 
     </View>

@@ -1,8 +1,8 @@
 {
   "name": "DiscoveryOS",
   "id": "com.nickr.DiscoveryOS",
-  "version": "1.0.3",
-  "build": 13,
+  "version": "1.0.4",
+  "build": 14,
   "rust": ".",
   "capabilities": {
     "network": {
@@ -71,7 +71,6 @@
     "clipboard": true,
     "process": {
       "env": [
-        "DEBUG",
         "DISCUZ_COOKIES"
       ]
     },
