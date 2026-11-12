@@ -374,31 +374,16 @@ export function Thread(props: {
             <Text style={{ fontSize: 13, color: palette().muted }}>{"‹ Back"}</Text>
           </View>
         ) : null}
-        {/* The title is centred in the space left of the icons; a long one is cut off at the icons' edge,
-            and fades out over its last stretch there. */}
-        <View style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-          <Text style={{ numberOfLines: 1, textAlign: "center", fontSize: 22, fontWeight: 600, color: palette().text }}>{title()}</Text>
-          <View
-            style={{
-              position: "absolute",
-              top: 0,
-              bottom: 0,
-              right: 0,
-              width: 36,
-              backgroundImage: `linear-gradient(to right, transparent, ${palette().bg})`,
-            }}
-          />
-        </View>
-        {/* The icons sit at the right: the thread's browser and site icon, which opens the thread in the
-            system browser, and the favorite star. */}
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 0 }}>
+        {/* The icons sit at the left, bottom-aligned with the title: the favorite star, and the thread's
+            browser icon, which opens the thread in the system browser. */}
+        <View style={{ flexDirection: "row", alignItems: "center", alignSelf: "flex-end", gap: 8, flexShrink: 0 }}>
           {props.signedIn ? (
             <View
               onPress={toggleFavorite}
               accessibilityLabel={saved() ? "Remove from favorites" : "Add to favorites"}
               tooltip={hint(saved() ? "取消收藏 (f)" : "收藏 (f)")}
             >
-              {saved() ? <StarIcon size={20} filled={true} /> : <StarIcon size={20} />}
+              {saved() ? <StarIcon size={16} filled={true} /> : <StarIcon size={16} />}
             </View>
           ) : null}
           <View
@@ -407,8 +392,23 @@ export function Thread(props: {
             tooltip={hint("在浏览器中打开")}
             style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
           >
-            <BrowserIcon size={20} />
+            <BrowserIcon size={16} />
           </View>
+        </View>
+        {/* The title is centred in the space right of the icons; a long one is cut off at the icons' edge,
+            and fades out over its first stretch there. */}
+        <View style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+          <Text style={{ numberOfLines: 1, textAlign: "center", fontSize: 22, fontWeight: 600, color: palette().text }}>{title()}</Text>
+          <View
+            style={{
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              left: 0,
+              width: 36,
+              backgroundImage: `linear-gradient(to right, ${palette().bg}, transparent)`,
+            }}
+          />
         </View>
       </View>
       {failedPage() !== null ? (
