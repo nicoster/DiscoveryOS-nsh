@@ -81,10 +81,6 @@ impl Updater {
     /// running, keeps it as pending, and swaps the running app for it. The swap is accepted once
     /// `markHealthy` runs in the new app.
     pub fn activate(path: String, sha256: String) -> String {
-        // Only the macOS runner registers the swap handler. Refuse before writing anything else.
-        if ACTIVATE.get().is_none() {
-            return "err hot update is not available in this build".into();
-        }
         let bytes = match std::fs::read(&path) {
             Ok(bytes) => bytes,
             Err(err) => return format!("err read {path}: {err}"),
@@ -109,12 +105,6 @@ impl Updater {
                 format!("ok {build}")
             }
         }
-    }
-
-    /// Whether this build can swap in a package at all (only the macOS runner can). When false, the app
-    /// does not check for or download updates.
-    pub fn can_activate() -> bool {
-        ACTIVATE.get().is_some()
     }
 
     /// Records what the last update check did (shown in the About panel).

@@ -93,11 +93,6 @@ export function startUpdateCheck(): void {
     // This build is running: a package swapped in before is accepted now.
     const healthy = Updater.markHealthy();
     if (healthy.startsWith("err")) console.log(`update: ${healthy}`);
-    // Without the macOS runner nothing can swap the app, so do not offer or download an update.
-    if (!Updater.canActivate()) {
-      record("not available in this build");
-      return;
-    }
     checkForUpdate()
       .then(async (manifest) => {
         if (!manifest) {
