@@ -13,12 +13,15 @@ name: app release
 # Releases are never marked Latest, because the hot-update channel reads the Latest release (see
 # hot-update-package.yml).
 #
+# app-release-incremental builds the same way but restores the Rust build cache, so it compiles
+# incrementally. It is a test branch like ci-dryrun: it publishes nothing.
+#
 # ci-dryrun is a test branch: it builds the three packages and uploads them as workflow artifacts, but
 # publishes nothing.
 
 on:
   push:
-    branches: [app-release, ci-dryrun]
+    branches: [app-release, app-release-incremental, ci-dryrun]
   workflow_dispatch:
 
 permissions:
@@ -74,6 +77,8 @@ jobs:
           key: nsh-${{ env.NSH_VERSION }}-${{ runner.os }}-${{ runner.arch }}
 
       - name: Restore the Rust build cache
+        # Only the incremental branch reuses compiled artifacts; app-release always builds from scratch.
+        if: github.ref == 'refs/heads/app-release-incremental'
         uses: actions/cache@v4
         with:
           # Incremental compilation: the compiled dependencies and the crate's own artifacts.
@@ -161,6 +166,8 @@ jobs:
           key: nsh-${{ env.NSH_VERSION }}-${{ runner.os }}-${{ runner.arch }}
 
       - name: Restore the Rust build cache
+        # Only the incremental branch reuses compiled artifacts; app-release always builds from scratch.
+        if: github.ref == 'refs/heads/app-release-incremental'
         uses: actions/cache@v4
         with:
           # Incremental compilation: the compiled dependencies and the crate's own artifacts.
@@ -224,6 +231,8 @@ jobs:
           key: nsh-${{ env.NSH_VERSION }}-${{ runner.os }}-${{ runner.arch }}
 
       - name: Restore the Rust build cache
+        # Only the incremental branch reuses compiled artifacts; app-release always builds from scratch.
+        if: github.ref == 'refs/heads/app-release-incremental'
         uses: actions/cache@v4
         with:
           # Incremental compilation: the compiled dependencies and the crate's own artifacts.
