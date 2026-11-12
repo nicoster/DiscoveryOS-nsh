@@ -110,8 +110,10 @@ jobs:
           URL: ${{ steps.meta.outputs.url }}
         run: |
           sha=$(shasum -a 256 "out/$PACKAGE" | cut -d' ' -f1)
-          printf '{"id":"%s","build":%s,"version":"%s","url":"%s/%s","sha256":"%s"}\n' \
-            "$APP_ID" "$BUILD" "$VERSION" "$URL" "$PACKAGE" "$sha" > out/latest.json
+          # Release notes: the message of the commit this build is made from (its subject and body).
+          notes=$(git log -1 --format=%B | head -c 500)
+          line=$(python3 -I -c 'import json,sys; print(json.dumps({"id": sys.argv[1], "build": int(sys.argv[2]), "version": sys.argv[3], "url": sys.argv[4] + "/" + sys.argv[5], "sha256": sys.argv[6], "notes": sys.argv[7]}))' "$APP_ID" "$BUILD" "$VERSION" "$URL" "$PACKAGE" "$sha" "$notes")
+          printf '%s\n' "$line" > out/latest.json
           cat out/latest.json
 
       - name: Upload the package and manifest

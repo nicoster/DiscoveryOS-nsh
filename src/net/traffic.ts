@@ -1,4 +1,4 @@
-// Logs every HTTP request the app sends, and each response, to the terminal (stdout) when DEBUG=1.
+// Logs every HTTP request the app sends, and each response, to the debug log file when DISCO_DEBUG is set.
 // Secrets are redacted: Cookie and Set-Cookie values, and form fields named like a password.
 // Text bodies are printed (cut at BODY_LOG_LIMIT characters); binary bodies only give their size.
 

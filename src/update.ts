@@ -1,8 +1,13 @@
 // Hot update of this app's TSX: check the release manifest, download the signed package, and keep it for
 // the next start. The user applies it from the account row (`App.tsx`); `Updater` in `src/update.rs` verifies it.
 import { writeFile } from "fs/promises";
-import { signal } from "nsh";
+import { signal, Storage } from "nsh";
 import { Updater } from "discoveryos/native";
+import { type Manifest, parseManifest } from "./updateManifest";
+import { notify } from "./ui/toast";
+
+// The package kept for the next start or a swap, and the build it is: read by the app that runs it, to say so.
+const UPDATED_KEY = "updatedTo";
 
 // The manifest of the latest release (uploaded with each `.nshpkg` by the release step).
 export const UPDATE_MANIFEST_URL = "https://github.com/nicoster/DiscoveryOS-nsh/releases/latest/download/latest.json";
@@ -12,35 +17,6 @@ const CHECK_DELAY_MS = 3000;
 /** Records what the last check did, for the About panel (kept by the native side). */
 function record(result: string): void {
   Updater.recordCheck(`${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC · ${result}`);
-}
-
-export type Manifest = {
-  id: string;
-  build: number;
-  version: string;
-  url: string;
-  sha256: string;
-  // Revocation list (signed by the root), applied on every check.
-  revocations?: string;
-};
-
-/** The manifest, or `null` when it is not in the expected shape. Nothing in it is trusted beyond this. */
-export function parseManifest(value: unknown): Manifest | null {
-  if (typeof value !== "object" || value === null) return null;
-  const v = value as Record<string, unknown>;
-  if (typeof v.id !== "string" || typeof v.version !== "string") return null;
-  if (typeof v.build !== "number" || !Number.isInteger(v.build) || v.build < 1) return null;
-  if (typeof v.url !== "string" || !v.url.startsWith("https://")) return null;
-  if (typeof v.sha256 !== "string" || !/^[0-9a-f]{64}$/.test(v.sha256)) return null;
-  if (v.revocations !== undefined && (typeof v.revocations !== "string" || !v.revocations.startsWith("https://"))) return null;
-  return {
-    id: v.id,
-    build: v.build,
-    version: v.version,
-    url: v.url,
-    sha256: v.sha256,
-    revocations: v.revocations as string | undefined,
-  };
 }
 
 /** The manifest's package, when it is newer than the running build; otherwise `null`. Applies the
@@ -76,7 +52,22 @@ async function download(manifest: Manifest): Promise<string> {
   const kept = Updater.stagingPath("current");
   if (!kept) throw new Error("no place to keep the package for the next start");
   await writeFile(kept, bytes);
+  // Whichever app runs this build next (after a swap, or at the next start) says it was updated to it.
+  await Storage.setItem(UPDATED_KEY, JSON.stringify({ build: manifest.build, version: manifest.version })).catch(() => undefined);
   return path;
+}
+
+/** Says, once, that this run is the build the last update installed. Failures stay quiet. */
+function announceUpdate(): void {
+  Storage.getItem(UPDATED_KEY)
+    .then((text) => {
+      if (!text) return;
+      const updated = JSON.parse(text) as { build?: unknown; version?: unknown };
+      if (updated.build !== Updater.currentBuild()) return;
+      notify("update", `已升级到 ${String(updated.version)} (build ${String(updated.build)})`);
+      return Storage.setItem(UPDATED_KEY, "");
+    })
+    .catch(() => undefined);
 }
 
 /** Swaps the running app for the downloaded package now. The button calls this. */
@@ -93,6 +84,7 @@ export function startUpdateCheck(): void {
     // This build is running: a package swapped in before is accepted now.
     const healthy = Updater.markHealthy();
     if (healthy.startsWith("err")) console.log(`update: ${healthy}`);
+    announceUpdate();
     checkForUpdate()
       .then(async (manifest) => {
         if (!manifest) {

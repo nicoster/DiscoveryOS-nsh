@@ -95,11 +95,13 @@ nsh verify --root "$root" "$package_path"
 
 sha=$(shasum -a 256 "$package_path" | cut -d' ' -f1)
 url="$repo_url/releases/download/v${app_version}-b${app_build}/$package"
+# Release notes: the message of the commit this build is made from, as the workflow does.
+notes=$(git log -1 --format=%B | head -c 500)
 python3 -I -c '
 import json, sys
 print(json.dumps({"id": sys.argv[1], "build": int(sys.argv[2]), "version": sys.argv[3],
-                  "url": sys.argv[4], "sha256": sys.argv[5]}))
-' "$app_id" "$app_build" "$app_version" "$url" "$sha" > "$out_dir/latest.json"
+                  "url": sys.argv[4], "sha256": sys.argv[5], "notes": sys.argv[6]}))
+' "$app_id" "$app_build" "$app_version" "$url" "$sha" "$notes" > "$out_dir/latest.json"
 
 echo
 echo "built and verified:"

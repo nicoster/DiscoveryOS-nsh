@@ -6,6 +6,7 @@ use nsh_base::theme;
 use nsh_core::prelude::*;
 
 mod codec;
+mod debug_log;
 mod files;
 mod keychain;
 pub mod update;
@@ -21,6 +22,7 @@ fn native(registry: &mut Registry) {
         .module::<Format>()
         .module::<Gb18030>()
         .module::<Files>()
+        .module::<debug_log::DebugLog>()
         .module::<Keychain>()
         .module::<update::Updater>()
         .class::<Counter>();

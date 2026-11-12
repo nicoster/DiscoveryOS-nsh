@@ -11,9 +11,11 @@ import { DownloadIcon, ThemeIcon } from "./src/ui/icons";
 import { hint } from "./src/ui/Hint";
 import { hideSystemTitleBar } from "./src/ui/TitleBar";
 import { availableUpdate, installUpdate, startUpdateCheck } from "./src/update";
+import { updateTitle } from "./src/updateManifest";
 import { appearanceMode, appearanceName, cycleAppearance, palette, restoreAppearance, type AppearanceMode } from "./src/ui/appearance";
 import { installMenu } from "./src/ui/commands";
 import { CookieImportDialog, cookieImportOpen, setOnCookiesImported } from "./src/ui/CookieImport";
+import { AboutDialog, aboutOpen } from "./src/ui/AboutDialog";
 import { debugEnabled } from "./src/debugLog";
 
 // Port of `LoginView` (`Views/MainView.swift`) and `CurrentUserStore`: the forum is
@@ -361,7 +363,7 @@ function App() {
         {availableUpdate() ? (
           <IconButton
             icon={<DownloadIcon size={18} />}
-            title={`Update to ${availableUpdate()!.version}`}
+            title={updateTitle(availableUpdate()!)}
             onPress={applyUpdate}
           />
         ) : null}
@@ -489,6 +491,7 @@ function App() {
       {dialogOpen() ? signInDialog : null}
       {confirmOpen() ? signOutDialog : null}
       {debugEnabled && cookieImportOpen() ? <CookieImportDialog /> : null}
+      {aboutOpen() ? <AboutDialog /> : null}
       <Toaster />
 
     </View>
