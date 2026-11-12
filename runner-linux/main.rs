@@ -128,6 +128,8 @@ fn main() -> ExitCode {
 fn app_options(dir: &std::path::Path) -> AppOptions {
     let mut options = AppOptions {
         asset_base: Some(AssetBase::Directory(dir.join("assets"))),
+        // The platform's default is a phone's size (390x844); the app is a desktop window, as on macOS.
+        size: (1200, 800),
         // An app on its own, not a module embedded in another app.
         limits: Limits::standalone(),
         ..AppOptions::default()

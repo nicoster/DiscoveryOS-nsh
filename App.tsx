@@ -11,6 +11,7 @@ import { DownloadIcon, ThemeIcon } from "./src/ui/icons";
 import { hint } from "./src/ui/Hint";
 import { hideSystemTitleBar } from "./src/ui/TitleBar";
 import { availableUpdate, installUpdate, startUpdateCheck } from "./src/update";
+import { updateTitle } from "./src/updateManifest";
 import { appearanceMode, appearanceName, cycleAppearance, palette, restoreAppearance, type AppearanceMode } from "./src/ui/appearance";
 import { installMenu } from "./src/ui/commands";
 import { CookieImportDialog, cookieImportOpen, setOnCookiesImported } from "./src/ui/CookieImport";
@@ -362,7 +363,7 @@ function App() {
         {availableUpdate() ? (
           <IconButton
             icon={<DownloadIcon size={18} />}
-            title={`Update to ${availableUpdate()!.version}`}
+            title={updateTitle(availableUpdate()!)}
             onPress={applyUpdate}
           />
         ) : null}
