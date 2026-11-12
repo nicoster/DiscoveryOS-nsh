@@ -1,0 +1,143 @@
+name: app release
+
+# Every push to the app-release branch builds the full app for macOS, Windows and Linux, each on its own
+# runner (a package only embeds its icon and runs on the host it is built on), then publishes one GitHub
+# Release with all three assets. Nothing waits for approval.
+#
+# The version and build come from nsh.json. A release tag is app-v<version>-b<build>, so each push needs a
+# new build in nsh.json: the release job fails if the tag already exists. Releases are never marked Latest,
+# because the hot-update channel reads the Latest release (see hot-update-package.yml).
+#
+# ci-dryrun is a test branch: it builds the three packages and uploads them as workflow artifacts, but
+# publishes nothing.
+
+on:
+  push:
+    branches: [app-release, ci-dryrun]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  # The apps embed nsh 0.4.0 (Cargo.toml); a newer CLI stamps higher runtime requirements.
+  NSH_VERSION: v0.4.0
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the nsh CLI
+        run: |
+          curl -fsSL https://nsh.dev/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Import the signing certificate
+        if: ${{ secrets.APPLE_CERT_P12 != '' }}
+        env:
+          APPLE_CERT_P12: ${{ secrets.APPLE_CERT_P12 }}
+          APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/build.keychain-db"
+          keychain_password=$(openssl rand -hex 24)
+          printf '%s' "$APPLE_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$APPLE_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain"
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          identity=$(security find-identity -v -p codesigning "$keychain" | sed -n 's/.*"\(.*\)"/\1/p' | head -n 1)
+          test -n "$identity" || { echo "error: no code-signing identity in the certificate" >&2; exit 1; }
+          echo "SIGN_IDENTITY=$identity" >> "$GITHUB_ENV"
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+      - name: Package macOS
+        run: ./scripts/package-macos.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: .nsh/out/release/*.zip
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the nsh CLI
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/longbridge/nsh/releases/download/$env:NSH_VERSION/install.ps1" -OutFile "$env:RUNNER_TEMP\install-nsh.ps1"
+          & "$env:RUNNER_TEMP\install-nsh.ps1"
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:LOCALAPPDATA\nsh\bin"
+
+      - name: Package Windows
+        shell: pwsh
+        run: ./scripts/package-windows.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: .nsh/out/release/*.zip
+          if-no-files-found: error
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install GTK development packages
+        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev
+
+      - name: Install the nsh CLI
+        run: |
+          curl -fsSL https://nsh.dev/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Package Linux
+        run: ./scripts/package-linux.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: .nsh/out/release/*.tar.gz
+          if-no-files-found: error
+
+  release:
+    needs: [macos, windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Publish the GitHub Release
+        if: github.ref == 'refs/heads/app-release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          version=$(python3 -c 'import json; print(json.load(open("nsh.json"))["version"])')
+          build=$(python3 -c 'import json; print(json.load(open("nsh.json"))["build"])')
+          tag="app-v${version}-b${build}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "error: release $tag already exists; bump build in nsh.json" >&2
+            exit 1
+          fi
+          gh release create "$tag" assets/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --latest=false \
+            --title "DiscoveryOS $version (build $build) - app" \
+            --notes "Built and published by CI run $RUN_URL"
+
+      - name: Dry run (ci-dryrun publishes nothing)
+        if: github.ref != 'refs/heads/app-release'
+        run: ls -l assets

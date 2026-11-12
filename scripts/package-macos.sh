@@ -23,3 +23,11 @@ if [ "$identity" = "-" ]; then
 fi
 codesign --force --sign "$identity" "$app"
 echo "packaged $app with the hot-update runner (signed: $identity)"
+
+# The release asset that scripts/install.sh looks for: DiscoveryOS-<version>-build<N>-macos.zip.
+version=$(python3 -I -c 'import json; print(json.load(open("nsh.json"))["version"])')
+build=$(python3 -I -c 'import json; print(json.load(open("nsh.json"))["build"])')
+out_dir="${RELEASE_DIR:-.nsh/out/release}"
+mkdir -p "$out_dir"
+ditto -c -k --sequesterRsrc --keepParent "$app" "$out_dir/DiscoveryOS-$version-build$build-macos.zip"
+echo "wrote $out_dir/DiscoveryOS-$version-build$build-macos.zip"
