@@ -16,6 +16,11 @@ function closeAbout(): void {
   aboutOpen.set(false);
 }
 
+// Builds are Unix times, which read better in hex: shown as uppercase digits, no prefix.
+function hexBuild(value: unknown): string {
+  return Number(value ?? 0).toString(16).toUpperCase();
+}
+
 // The lines About shows, from the runner's JSON (the same fields the macOS panel reads).
 function aboutLines(): string[] {
   let info: Record<string, unknown> = {};
@@ -27,12 +32,12 @@ function aboutLines(): string[] {
   const source = info.runningSource === "package" ? "update package" : "embedded";
   const lines = [
     `Version ${String(info.runningVersion ?? "?")}`,
-    `Running build ${String(info.runningBuild ?? 0)} (${source})`,
-    `Embedded: ${String(info.embeddedVersion ?? "?")} · build ${String(info.embeddedBuild ?? 0)}`,
+    `Running build ${hexBuild(info.runningBuild)} (${source})`,
+    `Embedded: ${String(info.embeddedVersion ?? "?")} · build ${hexBuild(info.embeddedBuild)}`,
   ];
   const pkg = info.package as Record<string, unknown> | null | undefined;
   if (pkg && typeof pkg === "object") {
-    lines.push(`Package: ${String(pkg.version ?? "?")} · build ${String(pkg.build ?? 0)}`);
+    lines.push(`Package: ${String(pkg.version ?? "?")} · build ${hexBuild(pkg.build)}`);
     const sha = typeof pkg.sha256 === "string" ? pkg.sha256 : "";
     lines.push(`SHA-256: ${sha.slice(0, 16)}…`);
     lines.push(`Key: ${String(pkg.keyId ?? "?")}`);

@@ -4,8 +4,9 @@ name: hot-update package
 # against the trusted root, uploads it with its manifest (latest.json) as a workflow artifact, and
 # publishes it as a public GitHub Release.
 #
-# Nothing is typed by hand: the version comes from nsh.json, and the build number is
-# BUILD_BASE + the run number, so it grows with every run.
+# Nothing is typed by hand: the version comes from nsh.json, and the build number is the Unix time
+# (seconds) of the run, so it grows with every run and needs no counter kept in the repository.
+# Runs are serialized so two builds never share a second.
 
 on:
   push:
@@ -15,14 +16,16 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: hot-update-package
+  cancel-in-progress: false
+
 jobs:
   package:
     runs-on: macos-latest
     env:
-      # Builds must grow past the build already installed in the field (the full app release is build 26).
-      BUILD_BASE: "26"
       APP_ID: "com.nickr.DiscoveryOS"
-      NSH_VERSION: "v0.4.0"
+      NSH_VERSION: "v0.5.0"
     steps:
       - uses: actions/checkout@v4
 
@@ -30,7 +33,7 @@ jobs:
         id: meta
         run: |
           version=$(python3 -c 'import json; print(json.load(open("nsh.json"))["version"])')
-          build=$((BUILD_BASE + GITHUB_RUN_NUMBER))
+          build=$(date -u +%s)
           package="DiscoveryOS-${version}-build${build}.nshpkg"
           tag="v${version}-b${build}"
           url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}"
@@ -43,8 +46,8 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "version $version, build $build, tag $tag"
 
-      # The nsh CLI is pinned to the runtime the apps embed (nsh 0.4.0): a newer CLI stamps packages
-      # with a higher min_runtime that devices on 0.4.0 refuse to load. The install is cached per
+      # The nsh CLI is pinned to the runtime the apps embed (nsh 0.5.0): a newer CLI stamps packages
+      # with a higher min_runtime that devices on 0.5.0 refuse to load. The install is cached per
       # pinned version, so a run only downloads it again when NSH_VERSION changes.
       - name: Restore the nsh CLI cache
         id: nsh-cache

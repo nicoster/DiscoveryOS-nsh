@@ -20,8 +20,8 @@ permissions:
   contents: write
 
 env:
-  # The apps embed nsh 0.4.0 (Cargo.toml); a newer CLI stamps higher runtime requirements.
-  NSH_VERSION: v0.4.0
+  # The apps embed nsh 0.5.0 (Cargo.toml); a newer CLI stamps higher runtime requirements.
+  NSH_VERSION: v0.5.0
 
 jobs:
   macos:
