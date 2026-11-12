@@ -1,0 +1,21 @@
+# The Windows runner of the app with hot updates. `nsh package --target windows` builds its own runner, which only
+# loads the bundle shipped in the app; `scripts/package-windows.ps1` swaps this one in. The macOS counterpart is `runner/`.
+[package]
+name = "discoveryos-runner-windows"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "DiscoveryOS"
+path = "main.rs"
+
+[dependencies]
+nsh-core = { version = "=0.4.0" }
+nsh-base = { version = "=0.4.0", features = ["highlight"] }
+nsh-platform-windows = { version = "=0.4.0" }
+nsh-app-discoveryos = { path = ".." }
+serde_json = "1"
+log = "0.4"
+
+[workspace]
