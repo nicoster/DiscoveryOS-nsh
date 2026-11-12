@@ -34,8 +34,15 @@ jobs:
           curl -fsSL https://nsh.dev/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      - name: Check for the signing certificate
+        env:
+          APPLE_CERT_P12: ${{ secrets.APPLE_CERT_P12 }}
+        run: |
+          # The secrets context is not allowed in an if: condition, so record the result in the environment.
+          if [ -n "$APPLE_CERT_P12" ]; then echo "HAS_SIGNING_CERT=true" >> "$GITHUB_ENV"; fi
+
       - name: Import the signing certificate
-        if: ${{ secrets.APPLE_CERT_P12 != '' }}
+        if: env.HAS_SIGNING_CERT == 'true'
         env:
           APPLE_CERT_P12: ${{ secrets.APPLE_CERT_P12 }}
           APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
