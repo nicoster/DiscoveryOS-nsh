@@ -185,6 +185,8 @@ export function ReplyBox(props: {
             // One line: the padding centres the 17 pt line in the field's height.
             paddingVertical: collapsed() ? (ONE_LINE - 17) / 2 : 4,
             fontSize: 14,
+            // The native field does not follow the app's palette on its own (it showed dark text on the dark surface).
+            color: palette().text,
             backgroundColor: "transparent",
           }}
         />

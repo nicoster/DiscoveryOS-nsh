@@ -407,6 +407,58 @@ export function floorFromLink(href: string): { pid: string; ptid: string } | und
 }
 
 /**
+ * The floor a reply quotes in its own thread: the `findpost` link in the header of the reply's
+ * outermost quote (the arrow that opens the floor). `undefined` when the reply quotes no floor
+ * of `ptid`.
+ */
+export function quotedFloor(body: string, ptid: string): string | undefined {
+  const start = body.search(/<div[^>]*class="quote"/i);
+  if (start < 0) return undefined;
+  const end = body.indexOf("</blockquote>", start);
+  const head = body.slice(start, end < 0 ? undefined : end);
+  const link = /redirect\.php\?goto=findpost(?:&amp;|&)pid=(\d+)(?:&amp;|&)ptid=(\d+)/i.exec(head);
+  if (!link || link[2] !== ptid) return undefined;
+  return link[1];
+}
+
+// Where the `<div class="quote">` at `start` ends (just after its closing `</div>`), or -1.
+function quoteEnd(body: string, start: number): number {
+  const tags = /<div\b[^>]*>|<\/div>/gi;
+  tags.lastIndex = start;
+  let depth = 0;
+  let tag: RegExpExecArray | null;
+  while ((tag = tags.exec(body))) {
+    depth += tag[0].startsWith("</") ? -1 : 1;
+    if (depth === 0) return tags.lastIndex;
+  }
+  return -1;
+}
+
+/** A reply's body without its outermost quote block, so only what the reply itself says is left. */
+export function bodyWithoutQuote(body: string): string {
+  const start = body.search(/<div[^>]*class="quote"/i);
+  if (start < 0) return body;
+  const end = quoteEnd(body, start);
+  return end < 0 ? body : body.slice(0, start) + body.slice(end);
+}
+
+/**
+ * The body with its outermost quote wrapped in a link to the floor it quotes, so pressing anywhere
+ * in the quote opens that floor (the link goes through the same handler as the quote's arrow).
+ * A body whose quote does not name a floor of `ptid` is returned as it is.
+ */
+export function linkQuote(body: string, ptid: string): string {
+  const pid = quotedFloor(body, ptid);
+  if (!pid) return body;
+  const start = body.search(/<div[^>]*class="quote"/i);
+  const end = quoteEnd(body, start);
+  if (end < 0) return body;
+  // The link is drawn as the quote's own text: no underline, and no link colour.
+  const link = `<a href="redirect.php?goto=findpost&amp;pid=${pid}&amp;ptid=${ptid}" style="text-decoration:none;color:inherit">`;
+  return `${body.slice(0, start)}${link}${body.slice(start, end)}</a>${body.slice(end)}`;
+}
+
+/**
  * Appends a fetched page to the list. Paging ends when a page is empty, or when
  * its first item is already loaded: past its end, Discuz serves the last page
  * again. A short page is not an end, since the page size is the forum's own

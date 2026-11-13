@@ -4,7 +4,7 @@ import { Clipboard, keymap, List, signal, Storage, Text, View, type PasteEvent, 
 import { Dialog, TextView } from "nsh/base";
 import { currentUser, deletePost, editPost, HOST, loadEditForm, postReply, ReplyRefused, uploadAttachment, uploadEditAttachment, type EditForm } from "../discuz/client";
 import { bookmarkPost, clearThreadReplyPages, loadFloorPage, loadReplyPage, removeBookmark } from "../discuz/forum";
-import { absolutize, absoluteUrl, attachmentLinks, fixDiscuzMarkup, fixImages, floorFromLink, isAttachmentUrl, mergePage, threadIdFromLink, trimLeadingBlanks, type Post, type Reply } from "../discuz/parse";
+import { absolutize, absoluteUrl, attachmentLinks, bodyWithoutQuote, fixDiscuzMarkup, fixImages, floorFromLink, htmlToText, isAttachmentUrl, linkQuote, mergePage, quotedFloor, threadIdFromLink, trimLeadingBlanks, type Post, type Reply } from "../discuz/parse";
 import { draftToPost, postToDraft, replyQuoteInDraft } from "../discuz/quote";
 import { downloadAttachment } from "./downloads";
 import { DISCUZ_EXTENSIONS, renderDiscuzNode } from "./discuzMarkup";
@@ -16,7 +16,7 @@ import { notify } from "./toast";
 import { palette } from "./appearance";
 import { titleBarShown } from "./TitleBar";
 import { BrowserIcon, BubbleIcon, LinkIcon, PencilIcon, StarIcon, TrashIcon } from "./icons";
-import { ReplyCard } from "./ReplyCard";
+import { ReplyCard, type ReplyComment } from "./ReplyCard";
 import { ReplyBox } from "./ReplyBox";
 import { attachmentTag, createAttachments } from "./attachments";
 import type { Attached } from "./ReplyBox";
@@ -156,6 +156,31 @@ export function Thread(props: {
   function quote(r: Reply) {
     const text = replyQuoteInDraft(r, props.post.id);
     setDraft(draft() ? `${text}\n\n${draft()}` : `${text}\n`);
+  }
+
+  // The loaded replies that quote each floor, by the quoted floor's id. Rebuilt whenever the loaded
+  // list changes (a page that loads later can hold the quoting reply), and read reactively by each row,
+  // so a floor shown earlier gets its comments when the quoting reply arrives.
+  let commentsSource: Reply[] | undefined;
+  let commentsByFloor = new Map<string, ReplyComment[]>();
+  function commentsOn(pid: string): ReplyComment[] {
+    const list = replies();
+    if (list !== commentsSource) {
+      const next = new Map<string, ReplyComment[]>();
+      for (const r of list) {
+        const target = quotedFloor(r.body, props.post.id);
+        if (!target || target === r.id) continue;
+        const text = htmlToText(bodyWithoutQuote(r.body));
+        // A reply that only quotes says nothing of its own, so it has no comment.
+        if (text === "") continue;
+        const bucket = next.get(target) ?? [];
+        bucket.push({ id: r.id, name: r.author.name, seq: r.seq, text });
+        next.set(target, bucket);
+      }
+      commentsByFloor = next;
+      commentsSource = list;
+    }
+    return commentsByFloor.get(pid) ?? [];
   }
 
   // Shows floor `pid` of this thread: when the list does not have it, its page replaces the
@@ -453,6 +478,8 @@ export function Thread(props: {
             name={item().author.name}
             isOp={opId() !== undefined && item().author.id === opId()}
             meta={`#${item().seq} · ${timeAgo(item().at)}`}
+            comments={() => commentsOn(item().id)}
+            onCommentPress={(pid) => openFloor(pid, props.post.id)}
             highlighted={() => hovered() === item().seq}
             onHoverIn={() => hovered.set(item().seq)}
             onHoverOut={() => {
@@ -481,7 +508,7 @@ export function Thread(props: {
             body={
               <View style={{ gap: 12, alignSelf: "stretch" }}>
                 <TextView
-                  html={absolutize(trimLeadingBlanks(fixDiscuzMarkup(fixImages(item().body))), HOST)}
+                  html={absolutize(linkQuote(trimLeadingBlanks(fixDiscuzMarkup(fixImages(item().body))), props.post.id), HOST)}
                   styles={item().seq === 1 ? OP_TITLE_STYLES : undefined}
                   extensions={DISCUZ_EXTENSIONS}
                   renderCustom={renderDiscuzNode}

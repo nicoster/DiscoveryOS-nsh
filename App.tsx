@@ -402,7 +402,7 @@ function App() {
           placeholder="Username"
           value={name()}
           onChange={({ value: text }: { value: string }) => name.set(text)}
-          style={{ height: 28, paddingHorizontal: 8, fontSize: 14 }}
+          style={{ height: 28, paddingHorizontal: 8, fontSize: 14, color: palette().text, backgroundColor: palette().bg }}
         />
         <Input
           placeholder="Password"
@@ -413,7 +413,7 @@ function App() {
           onSubmit={() => {
             if (!busy() && name().length > 0 && pass().length > 0) void signIn();
           }}
-          style={{ height: 28, paddingHorizontal: 8, fontSize: 14 }}
+          style={{ height: 28, paddingHorizontal: 8, fontSize: 14, color: palette().text, backgroundColor: palette().bg }}
         />
         <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
           <Button label="Cancel" secondary={true} onPress={() => dialogOpen.set(false)} />

@@ -157,7 +157,7 @@ export function SearchControl(props: SearchProps) {
             onSubmit={({ text }: { text: string }) => props.onSubmit(text)}
             returnKeyType="search"
             accessibilityLabel="Search threads"
-            style={{ flex: 1, height: 26, fontSize: 13, borderWidth: 0, backgroundColor: "transparent" }}
+            style={{ flex: 1, height: 26, fontSize: 13, borderWidth: 0, color: palette().text, backgroundColor: "transparent" }}
           />
           <Glyph label="✕" title="Close search" onPress={props.onClose} size={13} />
         </View>

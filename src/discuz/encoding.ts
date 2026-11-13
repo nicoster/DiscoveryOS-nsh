@@ -7,6 +7,10 @@ import { fetchLogged } from "../net/traffic";
 export const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15";
 
+// Asks the forum to gzip its pages: a 7 KB forum page comes back at about 3 KB. The runtime's fetch
+// decodes the body, so the bytes below are already plain GB18030.
+const ACCEPT_ENCODING = "gzip";
+
 /** A GB18030 page as text, the `Set-Cookie` values it came with, and the URL it finally came from (after any redirect). */
 export async function fetchGbRequest(
   method: "GET" | "POST",
@@ -21,6 +25,7 @@ export async function fetchGbRequest(
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         "User-Agent": USER_AGENT,
+        "Accept-Encoding": ACCEPT_ENCODING,
         ...(cookie ? { Cookie: cookie } : {}),
       },
       body,
@@ -50,6 +55,7 @@ export async function postGbNoRedirect(
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         "User-Agent": USER_AGENT,
+        "Accept-Encoding": ACCEPT_ENCODING,
         ...(cookie ? { Cookie: cookie } : {}),
       },
       body,

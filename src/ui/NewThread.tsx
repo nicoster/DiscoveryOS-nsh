@@ -107,6 +107,8 @@ export function NewThread(props: {
           borderRadius: 6,
           borderWidth: 1,
           borderColor: palette().border,
+          color: palette().text,
+          backgroundColor: palette().bg,
         }}
       />
       <ReplyBox

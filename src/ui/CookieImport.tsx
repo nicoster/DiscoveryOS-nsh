@@ -101,7 +101,7 @@ export function CookieImportDialog(): JSX.Element {
           multiline={true}
           value={pastedText()}
           onChange={({ value }: { value: string }) => pastedText.set(value)}
-          style={{ height: 120, padding: 8, fontSize: 12 }}
+          style={{ height: 120, padding: 8, fontSize: 12, color: palette().text, backgroundColor: palette().bg }}
         />
         <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
           <DialogButton label="Paste from Clipboard" secondary={true} onPress={() => void pasteFromClipboard()} />

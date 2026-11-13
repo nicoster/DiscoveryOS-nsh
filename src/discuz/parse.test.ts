@@ -1,5 +1,5 @@
 import { expect, test } from "nsh/test";
-import { htmlToText, parsePmConversation, parsePmUsers, absolutize, floorFromLink, captureGroups, htmlDecode, parseBookmarks, parseChannels, parseMyReplies, parseMyThreads, unescapeNumericEntities, parsePosts, parseProfile, parseReplies, parseSearchResults, parseUser, mergePage, fixImages, removePercentEncoding, trimLeadingBlanks, threadIdFromLink, parseThreadPageInfo } from "./parse";
+import { htmlToText, parsePmConversation, parsePmUsers, absolutize, floorFromLink, quotedFloor, bodyWithoutQuote, linkQuote, captureGroups, htmlDecode, parseBookmarks, parseChannels, parseMyReplies, parseMyThreads, unescapeNumericEntities, parsePosts, parseProfile, parseReplies, parseSearchResults, parseUser, mergePage, fixImages, removePercentEncoding, trimLeadingBlanks, threadIdFromLink, parseThreadPageInfo } from "./parse";
 
 test("captureGroups returns one match's groups, or every whole match", () => {
   expect(captureGroups("a1b", "a(\\d)b", true)).toEqual(["1"]);
@@ -406,4 +406,41 @@ test("quoting keeps the words and drops the markup's line breaks and indentation
 
 test("a run of blank lines in a quote is one blank line", () => {
   expect(htmlToText("一<br><br><br><br>二")).toBe("一\n\n二");
+});
+
+test("reads the floor a reply quotes in its thread", () => {
+  const body =
+    '<div class="quote"><blockquote><font size="2">程胜 发表于 2026-11-12 17:58 ' +
+    '<a href="redirect.php?goto=findpost&amp;pid=111&amp;ptid=900" target="_blank"><img src="images/common/back.gif"></a></font><br>' +
+    "原文</blockquote></div>这个也不完全是伪需求";
+  expect(quotedFloor(body, "900")).toBe("111");
+  expect(quotedFloor(body, "901")).toBe(undefined);
+  expect(quotedFloor("<div>没有引用</div>", "900")).toBe(undefined);
+});
+
+test("quotes the outermost floor when quotes are nested", () => {
+  const body =
+    '<div class="quote"><blockquote><font size="2">甲 发表于 t <a href="redirect.php?goto=findpost&amp;pid=2&amp;ptid=900">x</a></font>' +
+    '<div class="quote"><blockquote>乙 <a href="redirect.php?goto=findpost&amp;pid=1&amp;ptid=900">y</a></blockquote></div></blockquote></div>回复';
+  expect(quotedFloor(body, "900")).toBe("2");
+});
+
+test("wraps the outermost quote in a link to the floor it quotes", () => {
+  const quote =
+    '<div class="quote"><blockquote><a href="redirect.php?goto=findpost&amp;pid=111&amp;ptid=900">x</a>引用' +
+    '<div class="quote"><blockquote>更深</blockquote></div></blockquote></div>';
+  expect(linkQuote(quote + "我的话", "900")).toBe(
+    '<a href="redirect.php?goto=findpost&amp;pid=111&amp;ptid=900" style="text-decoration:none;color:inherit">' + quote + "</a>我的话",
+  );
+});
+
+test("a quote of another thread is not linked", () => {
+  const body = '<div class="quote"><blockquote><a href="redirect.php?goto=findpost&amp;pid=111&amp;ptid=999">x</a>引用</blockquote></div>回复';
+  expect(linkQuote(body, "900")).toBe(body);
+});
+
+test("drops the outermost quote and keeps the reply's own text", () => {
+  const body = '<div class="quote"><blockquote>引用<div class="quote"><blockquote>更深</blockquote></div></blockquote></div><br>我的话';
+  expect(bodyWithoutQuote(body)).toBe("<br>我的话");
+  expect(bodyWithoutQuote("没有引用")).toBe("没有引用");
 });
