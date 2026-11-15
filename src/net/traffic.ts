@@ -84,12 +84,17 @@ export async function fetchLogged(
 
   let response: Response;
   let bytes: Uint8Array;
+  // A hung connection must not wedge the UI: every request gives up after 20 s.
+  const giveUp = new AbortController();
+  const timer = setTimeout(() => giveUp.abort(), 20_000);
   try {
-    response = await fetch(url, init);
+    response = await fetch(url, { ...init, signal: giveUp.signal });
     bytes = new Uint8Array(await response.arrayBuffer());
   } catch (e) {
     consoleDebug(`HTTP ! ${method} ${url} failed after ${Date.now() - started} ms: ${String(e)}`);
     throw e;
+  } finally {
+    clearTimeout(timer);
   }
 
   consoleDebug(`HTTP < ${response.status} ${response.statusText} ${method} ${url} (${Date.now() - started} ms)`);

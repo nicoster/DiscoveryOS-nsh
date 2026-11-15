@@ -71,7 +71,8 @@
     "clipboard": true,
     "process": {
       "env": [
-        "DISCUZ_COOKIES"
+        "DISCUZ_COOKIES",
+        "DISCO_DEBUG"
       ]
     },
     "fs": {

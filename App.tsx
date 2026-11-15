@@ -5,6 +5,7 @@ import { loadProfile } from "./src/discuz/forum";
 import type { Profile } from "./src/discuz/parse";
 import { clearCredentials, loadCredentials, saveCredentials } from "./src/discuz/credentials";
 import { hasSavedCookies } from "./src/discuz/cookies";
+import { QUESTIONS } from "./src/discuz/securityQuestion";
 import { Forum } from "./src/ui/Forum";
 import { notify, Toaster } from "./src/ui/toast";
 import { DownloadIcon, ThemeIcon } from "./src/ui/icons";
@@ -137,6 +138,11 @@ function App() {
   const user = signal<string | null>(currentUser());
   const name = signal("");
   const pass = signal("");
+  // The security question of the sign-in (0: none) and its answer, kept with the login once given.
+  const questionId = signal("0");
+  const answer = signal("");
+  const questionNode = signal<ViewRef | null>(null);
+  const questionOpen = signal(false);
   const busy = signal(false);
   const avatar = signal<string | null>(null);
   // The sign-in dialog, opened from the blank avatar while signed out.
@@ -179,15 +185,18 @@ function App() {
 
   async function signIn() {
     busy.set(true);
+    const q = questionId() !== "0" ? questionId() : undefined;
     try {
-      const ok = await login(name(), pass());
-      if (ok) {
-        saveCredentials({ name: name(), pass: pass() });
+      const result = await login(name(), pass(), q, q ? answer() : undefined);
+      if (result.ok) {
+        saveCredentials(q ? { name: name(), pass: pass(), questionid: q, answer: answer() } : { name: name(), pass: pass() });
         showProfile(name());
         pass.set("");
+        answer.set("");
+        questionId.set("0");
         dialogOpen.set(false);
       } else {
-        notify("sign-in", "Sign-in failed.");
+        notify("sign-in", `Sign-in failed: ${result.reason}`);
       }
     } catch (e) {
       notify("sign-in", `Sign-in failed: ${e}`);
@@ -210,6 +219,8 @@ function App() {
     user.set(null);
     name.set("");
     pass.set("");
+    questionId.set("0");
+    answer.set("");
     busy.set(false);
   }
 
@@ -388,7 +399,7 @@ function App() {
     >
       <View
         style={{
-          width: 280,
+          width: 320,
           padding: 16,
           gap: 10,
           borderRadius: 12,
@@ -415,6 +426,56 @@ function App() {
           }}
           style={{ height: 28, paddingHorizontal: 8, fontSize: 14, color: palette().text, backgroundColor: palette().bg }}
         />
+        {/* The security question, as the forum's login form asks it: a picker (the account
+            menu's overlay pattern), and an answer field once a question is chosen. */}
+        <View
+          ref={(n: ViewRef | null) => questionNode.set(n)}
+          onPress={() => questionOpen.set(!questionOpen())}
+          accessibilityLabel="Security question"
+          style={{ height: 28, paddingHorizontal: 8, justifyContent: "center", backgroundColor: palette().bg }}
+        >
+          <Text style={{ fontSize: 14, color: palette().text }}>{QUESTIONS.find(([id]) => id === questionId())![1]}</Text>
+        </View>
+        {questionOpen() && questionNode() ? (
+          <Overlay anchor={questionNode()!} placement="bottom" align="start" offset={4} onPressOutside={() => questionOpen.set(false)}>
+            <View
+              style={{
+                width: 288,
+                maxHeight: 240,
+                padding: 6,
+                gap: 2,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: palette().border,
+                backgroundColor: palette().surface,
+              }}
+            >
+              <Each of={QUESTIONS} key={(q: [string, string]) => q[0]}>
+                {(q) => (
+                  <MenuAction
+                    label={q()[1]}
+                    onPress={() => {
+                      questionId.set(q()[0]);
+                      questionOpen.set(false);
+                    }}
+                  />
+                )}
+              </Each>
+            </View>
+          </Overlay>
+        ) : null}
+        {questionId() !== "0" ? (
+          <Input
+            placeholder="Answer"
+            value={answer()}
+            onChange={({ value: text }: { value: string }) => answer.set(text)}
+            // The last field: Return signs in, like the password field when no question is chosen.
+            onSubmit={() => {
+              if (!busy() && name().length > 0 && pass().length > 0) void signIn();
+            }}
+            style={{ height: 28, paddingHorizontal: 8, fontSize: 14, color: palette().text, backgroundColor: palette().bg }}
+          />
+        ) : null}
         <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
           <Button label="Cancel" secondary={true} onPress={() => dialogOpen.set(false)} />
           <Button

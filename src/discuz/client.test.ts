@@ -1,5 +1,5 @@
 import { expect, test } from "nsh/test";
-import { attachedIds, isLoginRequired, parseAttachIds, parseFormHash, parsePageSize, parseReplyBox, replyOutcome } from "./client";
+import { attachedIds, isLoginRequired, loginForm, parseAttachIds, parseFormHash, parsePageSize, parseReplyBox, replyOutcome } from "./client";
 
 // Markup as the Discuz pages send it (`DiscuzAPI.swift` regexes).
 const signedIn = '<div><a href="logging.php?action=logout&amp;formhash=abc123">退出</a></div>';
@@ -16,6 +16,23 @@ test("finds no form hash on a signed-out page", () => {
 test("detects a page that asks for login", () => {
   expect(isLoginRequired(signedOut)).toBe(true);
   expect(isLoginRequired(signedIn)).toBe(false);
+});
+
+test("the login form carries the security question fields, blank when none is chosen", () => {
+  expect(loginForm({ name: "u", pass: "p" })).toEqual([
+    ["username", "u"],
+    ["password", "p"],
+    ["questionid", "0"],
+    ["answer", ""],
+    ["loginsubmit", "true"],
+  ]);
+  expect(loginForm({ name: "u", pass: "p", questionid: "3", answer: "沈阳" })).toEqual([
+    ["username", "u"],
+    ["password", "p"],
+    ["questionid", "3"],
+    ["answer", "沈阳"],
+    ["loginsubmit", "true"],
+  ]);
 });
 
 test("reads the posts-per-page setting", () => {

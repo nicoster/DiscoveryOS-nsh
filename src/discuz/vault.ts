@@ -6,7 +6,7 @@ import { Keychain } from "discoveryos/native";
 
 const ACCOUNT = "session";
 
-export type Credentials = { name: string; pass: string };
+export type Credentials = { name: string; pass: string; questionid?: string; answer?: string };
 
 export type Vault = {
   creds: Credentials | null;
@@ -19,8 +19,13 @@ export function parseVault(raw: string | null): Vault {
   try {
     const v = JSON.parse(raw) as Partial<Vault> | null;
     const c = v?.creds as Partial<Credentials> | null | undefined;
-    const creds =
+    const creds: Credentials | null =
       c && typeof c.name === "string" && typeof c.pass === "string" ? { name: c.name, pass: c.pass } : null;
+    if (creds) {
+      // The security question, when the account has one.
+      if (typeof c?.questionid === "string") creds.questionid = c.questionid;
+      if (typeof c?.answer === "string") creds.answer = c.answer;
+    }
     const cookies: Record<string, string> = {};
     if (v?.cookies && typeof v.cookies === "object") {
       for (const [k, val] of Object.entries(v.cookies)) {

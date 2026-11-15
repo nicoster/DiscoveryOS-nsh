@@ -10,7 +10,7 @@ export function loadCredentials(): Credentials | null {
 }
 
 export function saveCredentials(creds: Credentials): void {
-  saveVault({ ...loadVault(), creds: { name: creds.name, pass: creds.pass } });
+  saveVault({ ...loadVault(), creds: { ...creds } });
 }
 
 export function clearCredentials(): void {

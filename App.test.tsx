@@ -25,6 +25,9 @@ test("signed out with nothing saved, the sign-in dialog opens and no channel err
 
 test("the blank avatar opens the sign-in dialog, and Cancel closes it", async () => {
   const app = await open("./App.tsx");
+  // The dialog opens on its own at launch; close it first so the avatar is not behind its cover.
+  await app.press("text:Cancel");
+  expect(app.texts()).not.toContain("Account");
   await app.press("label:Sign in");
   expect(app.texts()).toContain("Account");
   await app.press("text:Cancel");
@@ -33,7 +36,8 @@ test("the blank avatar opens the sign-in dialog, and Cancel closes it", async ()
 
 test("a failed sign-in shows an error", async () => {
   const app = await open("./App.tsx");
-  await app.press("label:Sign in");
+  // The dialog is open at launch already; the dialog's own Sign in button (the footer's
+  // label is behind the dialog's cover).
   await app.type("Username", "someone");
   await app.type("Password", "secret");
   await app.press("text:Sign in");

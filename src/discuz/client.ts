@@ -3,6 +3,7 @@
 import { formEncodeGb, fetchGbRequest, htmlEntities, postFormGb, postGbNoRedirect } from "./encoding";
 import { absorbSetCookie, clearCookies, cookieHeader } from "./cookies";
 import { htmlDecode } from "./parse";
+import { loginMessage, parseSecquesForm } from "./securityQuestion";
 
 export const HOST = "https://www.4d4y.com/forum/";
 
@@ -19,7 +20,8 @@ const POSTBOX = /<div class="postbox">([\s\S]*?)<\/div>/;
 const AJAX_REFUSAL = /messagehandle_fastpost\('[^']*', '([^']*)'\)/;
 const PAGE_SIZE = /name="pppnew" value="(\d+)" checked="checked"/;
 
-export type Session = { name: string; pass: string };
+/** The security question of `logging.php`'s form: `questionid` 1-7 with its answer, or none. */
+export type Session = { name: string; pass: string; questionid?: string; answer?: string };
 
 let session: Session | null = null;
 let formHash: string | null = null;
@@ -64,7 +66,7 @@ export async function request(
     if (fresh) formHash = fresh;
   }
   if (retry && isLoginRequired(html) && session) {
-    const relogged = await reLogin(session.name, session.pass);
+    const relogged = await reLogin(session);
     if (relogged) return request(method, path, { query, form, retry: false, cookie });
   }
   return html;
@@ -85,24 +87,40 @@ export async function findFloor(tid: string, pid: string): Promise<{ html: strin
   return { html, page: Number(new URL(url).searchParams.get("page")) || 1 };
 }
 
-async function dologin(name: string, pass: string): Promise<string | undefined> {
-  const html = await request("POST", "logging.php?action=login&loginsubmit=yes", {
-    form: [["username", name], ["password", pass], ["loginsubmit", "true"]],
-    retry: false,
-  });
-  return parseFormHash(html);
+/** The login form's fields, as the forum's own page posts them (a blank answer when no question is chosen). */
+export function loginForm(s: Session): [string, string][] {
+  return [["username", s.name], ["password", s.pass], ["questionid", s.questionid ?? "0"], ["answer", s.answer ?? ""], ["loginsubmit", "true"]];
+}
+
+/**
+ * One login attempt: the form hash when it signs in, or the refusal's reason. An account with a
+ * security question may answer the first POST with the `login_secques` page (`securityQuestion.ts`);
+ * its hidden fields are posted back once with the question and the answer.
+ */
+async function dologin(s: Session): Promise<{ hash?: string; reason?: string }> {
+  const post = (form: [string, string][]) =>
+    request("POST", "logging.php?action=login&loginsubmit=yes", { form, retry: false });
+  const html = await post(loginForm(s));
+  let hash = parseFormHash(html);
+  const secques = parseSecquesForm(html);
+  if (!hash && secques) {
+    const again = await post([...secques, ["questionid", s.questionid ?? "0"], ["answer", s.answer ?? ""], ["loginsubmit", "true"]]);
+    hash = parseFormHash(again);
+    return hash ? { hash } : { reason: loginMessage(again) ?? "the security question was refused" };
+  }
+  return hash ? { hash } : { reason: loginMessage(html) ?? "wrong username or password" };
 }
 
 // The login in progress, if any. Requests that find the login page while one runs
 // share its answer, so a burst of loads logs in once rather than once each.
 let loginInFlight: Promise<string | undefined> | null = null;
 
-function reLogin(name: string, pass: string): Promise<string | undefined> {
+function reLogin(s: Session): Promise<string | undefined> {
   // The new login's form hash replaces the old one: every write sends it, and the old one is refused.
-  loginInFlight ??= dologin(name, pass)
-    .then((hash) => {
-      if (hash) formHash = hash;
-      return hash;
+  loginInFlight ??= dologin(s)
+    .then((r) => {
+      if (r.hash) formHash = r.hash;
+      return r.hash;
     })
     .finally(() => {
     loginInFlight = null;
@@ -116,18 +134,21 @@ async function loadConfig(): Promise<void> {
   if (n) pageSize = n;
 }
 
+/** A login's outcome: signed in, or the refusal's reason as the forum itself explains it. */
+export type LoginOutcome = { ok: true } | { ok: false; reason: string };
+
 /** Logs in; on success keeps the credentials for re-login and loads the config. */
-export async function login(name: string, pass: string): Promise<boolean> {
-  const hash = await dologin(name, pass);
-  if (!hash) {
+export async function login(name: string, pass: string, questionid?: string, answer?: string): Promise<LoginOutcome> {
+  const r = await dologin({ name, pass, questionid, answer });
+  if (!r.hash) {
     session = null;
     formHash = null;
-    return false;
+    return { ok: false, reason: r.reason ?? "the forum refused the sign-in" };
   }
-  session = { name, pass };
-  formHash = hash;
+  session = { name, pass, questionid, answer };
+  formHash = r.hash;
   await loadConfig();
-  return true;
+  return { ok: true };
 }
 
 /** Logs out and forgets the session. (Cookies are the platform's; see the notes.) */
@@ -149,7 +170,7 @@ export async function logout(): Promise<void> {
  * the saved password signs in again. A network failure keeps everything saved:
  * only a refused password clears it.
  */
-export async function restoreSession(saved: { name: string; pass: string } | null): Promise<"signed-in" | "signed-out" | "offline"> {
+export async function restoreSession(saved: Session | null): Promise<"signed-in" | "signed-out" | "offline"> {
   try {
     const html = await request("GET", "index.php", { retry: false });
     const hash = parseFormHash(html);
@@ -166,7 +187,7 @@ export async function restoreSession(saved: { name: string; pass: string } | nul
   }
   if (!saved) return "signed-out";
   try {
-    return (await login(saved.name, saved.pass)) ? "signed-in" : "signed-out";
+    return (await login(saved.name, saved.pass, saved.questionid, saved.answer)).ok ? "signed-in" : "signed-out";
   } catch {
     return "offline";
   }

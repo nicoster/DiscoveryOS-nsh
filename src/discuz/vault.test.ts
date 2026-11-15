@@ -12,6 +12,11 @@ test("the login and the cookies come back from one item", () => {
   expect(v.cookies).toEqual({ abc_auth: "x" });
 });
 
+test("the security question and its answer come back with the login", () => {
+  const v = parseVault(JSON.stringify({ creds: { name: "u", pass: "p", questionid: "3", answer: "沈阳" } }));
+  expect(v.creds).toEqual({ name: "u", pass: "p", questionid: "3", answer: "沈阳" });
+});
+
 test("entries of the wrong shape are dropped", () => {
   const v = parseVault(JSON.stringify({ creds: { name: 1 }, cookies: { a: 1, b: "2" } }));
   expect(v.creds).toBe(null);

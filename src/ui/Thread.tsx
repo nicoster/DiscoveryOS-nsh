@@ -77,7 +77,8 @@ export function Thread(props: {
   const draft = signal("");
   const sending = signal(false);
   // Whether the thread is in the favorites: the shared list, which the thread lists star from.
-  const saved = () => isFavorite(props.post.id);
+  // (The menu can read this while the thread's post is being cleared, e.g. at sign-out.)
+  const saved = () => (props.post ? isFavorite(props.post.id) : false);
   // The thread's page on the forum, for the browser.
   const threadUrl = () => `${HOST}viewthread.php?tid=${props.post.id}`;
 
