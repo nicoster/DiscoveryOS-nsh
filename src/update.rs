@@ -267,7 +267,7 @@ fn trust_store() -> Result<TrustStore, String> {
 /// The updates directory: `<data dir>/updates`, created on demand.
 fn state_dir() -> Result<PathBuf, String> {
     // The app's own data directory (`${dataDir}` in nsh.json's capabilities), not the shared root.
-    let dir = nsh_engine::data_dir()
+    let dir = nsh_engine::support_dir()
         .ok_or_else(|| "no data directory".to_string())?
         .join(nsh_engine::app_dir_name(Some(APP_ID)))
         .join("updates");
