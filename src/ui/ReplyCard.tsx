@@ -1,12 +1,44 @@
 // One post in the forum's style: the avatar on the left, and beside it the meta line over
 // the body. Threads and private-message conversations both show their posts this way.
-import { Image, Text, View, type JSX, type ViewRef } from "nsh";
+import { createMotion, Image, Text, View, type JSX, type ViewRef } from "nsh";
 import { palette } from "./appearance";
 
 /** A reply that quotes this post, shown under it as a comment: its author, floor and text. */
 export type ReplyComment = { id: string; name: string; seq: number; text: string };
 
+/** One comment card under a post. A card added after the post's comments were shown fades up as it appears. */
+function CommentCard(props: { comment: ReplyComment; fresh: boolean; marginTop: number; onPress?: () => void }) {
+  const c = props.comment;
+  const entrance = props.fresh ? createMotion({ enter: "fadeInUp", duration: 220 }) : undefined;
+  return (
+    <View
+      onPress={props.onPress}
+      accessibilityLabel="跳到这条回复"
+      style={{
+        ...(entrance?.style ?? {}),
+        position: "relative",
+        // Sized to its text (not stretched to the column), wrapping at the column's width.
+        alignSelf: "flex-start",
+        marginTop: props.marginTop,
+        gap: 4,
+        padding: 10,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: palette().border,
+        backgroundColor: palette().surface,
+        // Darker at the top, lighter at the bottom.
+        backgroundImage: `linear-gradient(to bottom, ${palette().commentTop}, ${palette().commentBottom})`,
+      }}
+    >
+      <Text style={{ fontSize: 12, color: palette().muted }}>{`${c.name} · #${c.seq}`}</Text>
+      <Text style={{ fontSize: 13, color: palette().muted }}>{c.text}</Text>
+    </View>
+  );
+}
+
 export function ReplyCard(props: {
+  /** The reply this card shows, so a recycled row that now shows another reply does not animate its comments in. */
+  id?: string;
   avatar?: string;
   name: string;
   /** Whether the post is by the thread's author (楼主), shown as a tag beside the name. */
@@ -35,6 +67,31 @@ export function ReplyCard(props: {
   onHoverIn?: () => void;
   onHoverOut?: () => void;
 }) {
+  // The comment ids already shown for the reply on this row. A card whose id is not here was just added, so it animates.
+  let shownFor: string | undefined;
+  let shown = new Set<string>();
+  let started = false;
+  function commentCards(list: ReplyComment[]) {
+    // A recycled row shows another reply: its current comments are the baseline, so none of them animate.
+    if (!started || props.id !== shownFor) {
+      started = true;
+      shownFor = props.id;
+      shown = new Set(list.map((c) => c.id));
+    }
+    return list.map((c, i) => {
+      const fresh = !shown.has(c.id);
+      shown.add(c.id);
+      return (
+        <CommentCard
+          comment={c}
+          fresh={fresh}
+          // Each comment card is pulled up over the one above, so it overlaps the one above it.
+          marginTop={i > 0 ? -6 : 0}
+          onPress={() => props.onCommentPress?.(c.id)}
+        />
+      );
+    });
+  }
   // The post's card and the comment cards below it are siblings, not nested: each comment card is
   // indented and pulled up a little, so its top edge sits over the bottom of the post's card.
   return (
@@ -104,29 +161,7 @@ export function ReplyCard(props: {
         // Relative and above the highlighted post (z 10), so the comment cards are not covered by its hover layer.
         // The comment cards overlap like the post: each is pulled up over the one above, and later cards paint on top.
         <View style={{ position: "relative", zIndex: 11, marginLeft: 44, marginRight: -5, marginTop: -6 }}>
-          {props.comments().map((c, i) => (
-            <View
-              onPress={() => props.onCommentPress?.(c.id)}
-              accessibilityLabel="跳到这条回复"
-              style={{
-                position: "relative",
-                // Sized to its text (not stretched to the column), wrapping at the column's width.
-                alignSelf: "flex-start",
-                marginTop: i > 0 ? -6 : 0,
-                gap: 4,
-                padding: 10,
-                borderRadius: 14,
-                borderWidth: 1,
-                borderColor: palette().border,
-                backgroundColor: palette().surface,
-                // Darker at the top, lighter at the bottom.
-                backgroundImage: `linear-gradient(to bottom, ${palette().commentTop}, ${palette().commentBottom})`,
-              }}
-            >
-              <Text style={{ fontSize: 12, color: palette().muted }}>{`${c.name} · #${c.seq}`}</Text>
-              <Text style={{ fontSize: 13, color: palette().muted }}>{c.text}</Text>
-            </View>
-          ))}
+          {commentCards(props.comments())}
         </View>
       ) : null}
     </View>

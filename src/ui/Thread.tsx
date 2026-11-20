@@ -748,6 +748,7 @@ export function Thread(props: {
         {(item) => (
           <View>
             <ReplyCard
+              id={item().id}
               avatar={item().author.avatar ? absoluteUrl(item().author.avatar!, HOST) : undefined}
               name={item().author.name}
               isOp={opId() !== undefined && item().author.id === opId()}
