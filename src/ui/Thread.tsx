@@ -41,6 +41,9 @@ import { xiaohongshuNoteLinks } from "../xiaohongshu/links";
 import { videoLinksIn } from "../video/links";
 import { VideoLinkPlayer } from "./VideoLinkPlayer";
 import { XhsCard } from "./XhsCard";
+import { floorLinkUrl, postLinksIn } from "../discuz/postLinks";
+import { PostLinkCard } from "./PostLinkCard";
+import { previewOf } from "./postLinkPreview";
 
 // A picture by its name or its type; anything else is a file.
 import { isFavorite, markFavorite } from "./favorites";
@@ -767,23 +770,27 @@ export function Thread(props: {
                 // The pointer goes to the picker, which is outside the post: the post stays highlighted while it is open.
                 if (hovered() === item().seq && pickerOpenOn() === null) hovered.set(null);
               }}
-              // Hovering a post shows its bar: the quick emojis, and quote, edit and delete. Edit and
-              // delete are the signed-in user's own posts only, and floor 1 is not deleted from here.
+              // Hovering a post shows its bar: the link its copy button puts on the clipboard, the
+              // quick emojis, and quote, edit and delete. The copy button is on every post, even
+              // signed out; edit and delete are the signed-in user's own posts only, and floor 1
+              // is not deleted from here.
               actionBar={
-                EMOJI_REACTIONS_ON || props.signedIn ? (
-                  <MessageActions
-                    pid={item().id}
-                    quick={quickEmojis}
-                    onClose={() => {
-                      if (hovered() === item().seq) hovered.set(null);
-                    }}
-                    mine={() => reactionsOn(item().id)}
-                    onReact={(emoji) => toggleReaction(item().id, emoji)}
-                    onQuote={props.signedIn ? () => quote(item()) : undefined}
-                    onEdit={props.signedIn && isOwn(item()) ? () => void startEdit(item()) : undefined}
-                    onDelete={props.signedIn && isOwn(item()) && item().seq !== 1 ? () => pendingDelete.set({ pid: item().id, seq: item().seq }) : undefined}
-                  />
-                ) : null
+                <MessageActions
+                  pid={item().id}
+                  quick={quickEmojis}
+                  onCopyLink={() => {
+                    Clipboard.writeText(floorLinkUrl(item().id, props.post.id));
+                    notify("copy-link", "链接已复制。");
+                  }}
+                  onClose={() => {
+                    if (hovered() === item().seq) hovered.set(null);
+                  }}
+                  mine={() => reactionsOn(item().id)}
+                  onReact={(emoji) => toggleReaction(item().id, emoji)}
+                  onQuote={props.signedIn ? () => quote(item()) : undefined}
+                  onEdit={props.signedIn && isOwn(item()) ? () => void startEdit(item()) : undefined}
+                  onDelete={props.signedIn && isOwn(item()) && item().seq !== 1 ? () => pendingDelete.set({ pid: item().id, seq: item().seq }) : undefined}
+                />
               }
               reactions={EMOJI_REACTIONS_ON ? () => reactionsOn(item().id) : undefined}
               onReactionPress={(emoji) => toggleReaction(item().id, emoji)}
@@ -822,6 +829,47 @@ export function Thread(props: {
                       }
                     }}
                   />
+                  {/* A post's links to other floors show as preview cards under its text, inside
+                      the post. A quote's arrow and a `回复 N#` header are left out: the forum put
+                      those links there, and the quote itself already shows that floor. The cards
+                      flow in a wrapping row: each takes only the width its text needs, so several
+                      fit side by side, closer to each other than to the post's other attachments. */}
+                  {(() => {
+                    const links = postLinksIn(item().body, HOST).filter(
+                      (link) =>
+                        link.pid !== item().id &&
+                        link.pid !== quotedFloor(item().body, props.post.id) &&
+                        link.pid !== repliedFloor(item().body, props.post.id),
+                    );
+                    if (!links.length) return null;
+                    return (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          flexWrap: "wrap",
+                          alignItems: "flex-start",
+                          alignSelf: "stretch",
+                          gap: 6,
+                        }}
+                      >
+                        {links.map((link) => (
+                          <PostLinkCard
+                            link={link}
+                            foreign={link.ptid !== props.post.id}
+                            local={
+                              link.ptid === props.post.id
+                                ? () => {
+                                    const target = replies().find((r) => r.id === link.pid);
+                                    return target ? previewOf(target) : undefined;
+                                  }
+                                : undefined
+                            }
+                            onPress={() => openFloor(link.pid, link.ptid, item().id)}
+                          />
+                        ))}
+                      </View>
+                    );
+                  })()}
                   {/* Bilibili videos the post links to play under its text (the text view cannot show a player). */}
                   {bilibiliRefs(item().body).map((ref) => ("url" in ref ? <BiliShortPlayer url={ref.url} /> : <BiliPlayer video={ref} />))}
                   {douyinRefs(item().body).map((ref) => ("url" in ref ? <DouyinShortPlayer url={ref.url} /> : <DouyinPlayer id={ref.id} />))}

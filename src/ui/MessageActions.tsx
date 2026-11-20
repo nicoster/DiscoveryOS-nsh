@@ -1,9 +1,10 @@
-// The bar that hovers over a post: the quick emojis, a button for more, and the post's actions (quote,
-// edit, delete). Each action is shown only when the caller passes it. The emoji picker opens as an
-// overlay on the app's root view, so the posts below it (and their native text views) cannot cover it.
+// The bar that hovers over a post: the quick emojis, a button for more, the post's link, and the
+// post's actions (quote, edit, delete). The copy-link button is always there; each other action
+// is shown only when the caller passes it. The emoji picker opens as an overlay on the app's root
+// view, so the posts below it (and their native text views) cannot cover it.
 import { Overlay, signal, Text, View, type ViewRef } from "nsh";
 import { palette } from "./appearance";
-import { PencilIcon, QuoteIcon, SmileIcon, TrashIcon } from "./icons";
+import { PencilIcon, QuoteIcon, LinkIcon, SmileIcon, TrashIcon } from "./icons";
 import { hint } from "./Hint";
 import { EMOJI_REACTIONS_ON, pickerOpenOn } from "./reactions";
 
@@ -33,6 +34,8 @@ export function MessageActions(props: {
   /** The emojis the user already put on this post, shown highlighted. */
   mine: () => string[];
   onReact: (emoji: string) => void;
+  /** Copies this post's own link. Every post has it, signed in or not. */
+  onCopyLink: () => void;
   onQuote?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
@@ -99,6 +102,15 @@ export function MessageActions(props: {
           <SmileIcon size={16} />
         </View>
         ) : null}
+        <View
+          onPress={props.onCopyLink}
+          accessibilityLabel="复制本帖链接"
+          tooltip={hint("复制本帖链接")}
+          {...CELL_FEEDBACK}
+          style={CELL}
+        >
+          <LinkIcon size={16} />
+        </View>
         {props.onQuote ? (
           <View onPress={props.onQuote} accessibilityLabel="引用"tooltip={hint("引用 (q)")} {...CELL_FEEDBACK} style={CELL}>
             <QuoteIcon size={16} />
