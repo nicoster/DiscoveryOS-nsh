@@ -3,7 +3,9 @@
   "id": "com.nickr.DiscoveryOS",
   "version": "1.0.5",
   "build": 26,
+  "icon": "icon.png",
   "rust": ".",
+  "theme": "theme.json",
   "capabilities": {
     "network": {
       "hosts": [
