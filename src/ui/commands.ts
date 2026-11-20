@@ -3,7 +3,7 @@
 // types (`/`, `n`, `r`) is bound through the keymap and is left out of the native menu's shortcut
 // field, so the menu cannot fire it while a text field has the focus; chords with a modifier
 // (`mod+r`) are bound the same way, so every shortcut has one path.
-import { Clipboard, cleanup, effect, keymap, signal, untracked } from "nsh";
+import { Clipboard, cleanup, effect, keymap, platform, signal, untracked } from "nsh";
 import { isAvailable, Menu, type MenuItem, type MenuRole } from "nsh/desktop";
 import { openAbout } from "./AboutDialog";
 import { debugEnabled } from "../debugLog";
@@ -183,10 +183,18 @@ function appearanceItem(mode: AppearanceMode): MenuItem {
   };
 }
 
+// The app menu. Hide / Hide Others / Show All are macOS roles only; showing them as dead items
+// on Windows and Linux makes the menus look broken there.
+function appMenuItems(): MenuItem[] {
+  const macOnly: MenuItem[] =
+    platform.os === "macos" ? [role("hide"), role("hideOthers"), role("showAll"), SEPARATOR] : [];
+  return [aboutItem(), checkUpdateItem(), SEPARATOR, ...macOnly, role("quit")];
+}
+
 // The menu bar, top to bottom. Its items are built each time it is set, so their state is current.
 export function menuBar(): MenuItem[] {
   return [
-    submenu("DiscoveryOS", [aboutItem(), checkUpdateItem(), SEPARATOR, role("hide"), role("hideOthers"), role("showAll"), SEPARATOR, role("quit")]),
+    submenu("DiscoveryOS", appMenuItems()),
     submenu("编辑", [role("undo"), role("redo"), SEPARATOR, role("cut"), role("copy"), role("paste"), role("selectAll")]),
     submenu("论坛", [item("forum.search"), item("forum.refresh"), SEPARATOR, item("forum.next"), item("forum.prev"), item("forum.compose")]),
     submenu("帖子", [
@@ -219,10 +227,22 @@ function copySessionCookies(): void {
 }
 
 
+/** Opens the app's menus as a popup. Windows and Linux hide the window's menu bar while the app
+ * draws its title bar, so the title bar's Menu button (or F10) opens the same menus this way. */
+export function openAppMenu(): void {
+  if (!isAvailable) return;
+  void Menu.popup(menuBar()).catch(() => undefined);
+}
+
 /** Sets the menu bar, and sets it again whenever a command, its state or the appearance changes. Call once, from the app. */
 export function installMenu(): void {
   if (!isAvailable) return;
   effect(() => {
     Menu.setApplicationMenu(menuBar());
   });
+  // With no system menu bar on Windows and Linux, F10 opens the menus as it would on a window
+  // that has one: a way in even when the app's title bar (and its Menu button) is not drawn.
+  if (platform.os !== "macos") {
+    keymap.bind("f10", openAppMenu, { when: "always" });
+  }
 }

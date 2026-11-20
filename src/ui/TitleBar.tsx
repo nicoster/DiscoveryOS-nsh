@@ -6,13 +6,13 @@
 import { cleanup, effect, LayoutAnimation, Overlay, reduceMotion, signal, Text, untracked, View, type ViewRef } from "nsh";
 import { Input } from "nsh/base";
 import { hint } from "./Hint";
-import { isAvailable, Menu, titleBar, Window } from "nsh/desktop";
+import { isAvailable, titleBar, Window } from "nsh/desktop";
 import { platform } from "nsh";
 import { palette } from "./appearance";
-import { menuBar } from "./commands";
+import { openAppMenu } from "./commands";
 import { onEscape } from "./escape";
 import { channelsCollapsed, toggleChannelsCollapsed } from "./channelRail";
-import { SearchIcon, SidebarIcon } from "./icons";
+import { MenuIcon, SearchIcon, SidebarIcon } from "./icons";
 
 /** Hides the system's title bar, so the app draws its own (`TitleBar`). Call once at launch. */
 export function hideSystemTitleBar(): void {
@@ -185,6 +185,32 @@ export function SearchControl(props: SearchProps) {
   );
 }
 
+/** The menu button for Windows and Linux, whose window's menu bar is hidden while the app draws
+ * the title bar: a bordered button that plainly reads as one, opening the app's menus as a popup. */
+export function MenuButton() {
+  return (
+    <View
+      onPress={openAppMenu}
+      accessibilityLabel="菜单"
+      tooltip={hint("菜单 (F10)")}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: palette().border,
+        backgroundColor: palette().surface,
+      }}
+    >
+      <MenuIcon size={14} />
+      <Text style={{ fontSize: 13, color: palette().text }}>菜单</Text>
+    </View>
+  );
+}
+
 /** The title bar: it drags the window (double-click maximizes, as the system's does). */
 export function TitleBar(props: { wide: () => boolean; search: SearchProps }) {
   return (
@@ -199,19 +225,9 @@ export function TitleBar(props: { wide: () => boolean; search: SearchProps }) {
         paddingRight: captionInset() + 14,
       }}
     >
-      {/* Windows and Linux hide the window's menu bar while the title bar is drawn by the app, so the app's menus open from here. */}
-      {platform.os === "windows" || platform.os === "linux" ? (
-        <View
-          onPress={() => {
-            Menu.popup(menuBar()).catch(() => undefined);
-          }}
-          accessibilityLabel="DiscoveryOS"
-          tooltip={hint("菜单")}
-          style={{ padding: 4, borderRadius: 6 }}
-        >
-          <Text style={{ fontSize: 13, color: palette().text }}>DiscoveryOS</Text>
-        </View>
-      ) : null}
+      {/* Windows and Linux hide the window's menu bar while the title bar is drawn by the app. A plain
+       * app name here read as the window's title, not a menu, so the entry is the Menu button. */}
+      {platform.os === "windows" || platform.os === "linux" ? <MenuButton /> : null}
       {props.wide() ? (
         <View
           onPress={toggleChannelsCollapsed}

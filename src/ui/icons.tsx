@@ -94,6 +94,28 @@ export function SidebarIcon(props: { size: number }) {
   return <Image src={sidebarSvg} style={{ width: props.size, height: props.size }} />;
 }
 
+/** The menu button's icon: three horizontal lines, drawn in code so no font has to carry the
+ * `☰` glyph and a hot update needs no new image file. */
+export function MenuIcon(props: { size: number }) {
+  return (
+    <Canvas
+      style={{ width: props.size, height: props.size }}
+      draw={(cx, size) => {
+        const w = size.width;
+        cx.strokeStyle = palette().muted;
+        cx.lineWidth = 1.5;
+        cx.lineCap = "round";
+        for (const y of [0.2, 0.5, 0.8]) {
+          cx.beginPath();
+          cx.moveTo(w * 0.12, w * y);
+          cx.lineTo(w * 0.88, w * y);
+          cx.stroke();
+        }
+      }}
+    />
+  );
+}
+
 /** A five-pointed star; `filled` paints it solid, otherwise it is an outline. */
 export function StarIcon(props: { size: number; filled?: boolean }) {
   return (
