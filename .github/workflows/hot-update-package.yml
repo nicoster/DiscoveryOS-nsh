@@ -25,7 +25,7 @@ jobs:
     runs-on: macos-latest
     env:
       APP_ID: "com.nickr.DiscoveryOS"
-      NSH_VERSION: "v0.5.0"
+      NSH_VERSION: "v0.6.0"
     steps:
       - uses: actions/checkout@v4
 
@@ -46,8 +46,8 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "version $version, build $build, tag $tag"
 
-      # The nsh CLI is pinned to the runtime the apps embed (nsh 0.5.0): a newer CLI stamps packages
-      # with a higher min_runtime that devices on 0.5.0 refuse to load. The install is cached per
+      # The nsh CLI is pinned to the runtime the apps embed (nsh 0.6.0): a newer CLI stamps packages
+      # with a higher min_runtime that devices on 0.6.0 refuse to load. The install is cached per
       # pinned version, so a run only downloads it again when NSH_VERSION changes.
       - name: Restore the nsh CLI cache
         id: nsh-cache

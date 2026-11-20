@@ -44,31 +44,23 @@ fn main() -> ExitCode {
     nsh_platform_linux::set_ui_sets(vec![nsh_base::registry(), set_discoveryos()]);
 
     // The package directory: `nsh` next to the executable (or `NSH_APP_DIR`, as `nsh run` sets it).
-    let dir = match std::env::var_os("NSH_APP_DIR") {
-        Some(dir) => PathBuf::from(dir),
-        None => std::env::current_exe()
-            .and_then(|exe| exe.canonicalize())
-            .ok()
-            .and_then(|exe| exe.parent().map(|d| d.join("nsh")))
-            .unwrap_or_default(),
-    };
-    let options = app_options(&dir);
-
+    let dir = shipped_dir();
     // The package kept from an earlier update when it still verifies, else the bundle shipped in the app.
-    let bundle = match update::startup_package() {
-        Some((bundle, build)) => {
+    let (bundle, package_assets) = match update::startup_package() {
+        Some((bundle, build, assets)) => {
             update::ACTIVE_BUILD.store(build, std::sync::atomic::Ordering::SeqCst);
-            bundle
+            (bundle, Some(assets))
         }
         // SAFETY: the bytecode is a resource of this app's own package.
         None => match unsafe { Bundle::read_trusted(&dir.join("bundle.nshc")) } {
-            Ok(bundle) => bundle,
+            Ok(bundle) => (bundle, None),
             Err(err) => {
                 log::error!("cannot read the app bundle in {}: {err}", dir.display());
                 return ExitCode::FAILURE;
             }
         },
     };
+    let options = app_options(&dir, package_assets);
 
     // The swap runs on the GTK main thread: the JS thread asks, and the idle callback does the work there.
     let _ = update::ACTIVATE.set(Box::new(|bytes: Vec<u8>| {
@@ -124,10 +116,32 @@ fn main() -> ExitCode {
     }
 }
 
+/// The package directory: `nsh` next to the executable (or `NSH_APP_DIR`, as `nsh run` sets it).
+fn shipped_dir() -> PathBuf {
+    match std::env::var_os("NSH_APP_DIR") {
+        Some(dir) => PathBuf::from(dir),
+        None => std::env::current_exe()
+            .and_then(|exe| exe.canonicalize())
+            .ok()
+            .and_then(|exe| exe.parent().map(|d| d.join("nsh")))
+            .unwrap_or_default(),
+    }
+}
+
+/// Where images come from: the running package's assets first (a hot update can add images the app
+/// shipped without), then the assets shipped in the app.
+fn asset_base(package: Option<PathBuf>, shipped: &std::path::Path) -> AssetBase {
+    let shipped = shipped.join("assets");
+    match package {
+        Some(package) => AssetBase::Directories(vec![package, shipped]),
+        None => AssetBase::Directory(shipped),
+    }
+}
+
 /// The window's options from the package: its assets, name, id and appearance (`app.json`).
-fn app_options(dir: &std::path::Path) -> AppOptions {
+fn app_options(dir: &std::path::Path, package_assets: Option<PathBuf>) -> AppOptions {
     let mut options = AppOptions {
-        asset_base: Some(AssetBase::Directory(dir.join("assets"))),
+        asset_base: Some(asset_base(package_assets, dir)),
         // The platform's default is a phone's size (390x844); the app is a desktop window, as on macOS.
         size: (1200, 800),
         // An app on its own, not a module embedded in another app.
@@ -158,9 +172,10 @@ fn app_options(dir: &std::path::Path) -> AppOptions {
 /// Runs on the GTK main thread: verifies the package again, builds its bundle, and swaps the view.
 fn swap(bytes: Vec<u8>) {
     match update::bundle_from_package(&bytes) {
-        Ok((bundle, build)) => VIEW.with(|slot| {
+        Ok((bundle, build, assets)) => VIEW.with(|slot| {
             if let Some(view) = slot.borrow().as_ref() {
                 update::ACTIVE_BUILD.store(build, std::sync::atomic::Ordering::SeqCst);
+                view.set_asset_base(Some(asset_base(Some(assets), &shipped_dir())));
                 view.load(App::Js(bundle));
             }
         }),

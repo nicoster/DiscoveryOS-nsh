@@ -11,11 +11,16 @@ name = "DiscoveryOS"
 path = "main.rs"
 
 [dependencies]
-nsh-core = { version = "=0.5.0" }
-nsh-base = { version = "=0.5.0", features = ["highlight"] }
-nsh-platform-windows = { version = "=0.5.0" }
+nsh-core = { version = "=0.6.0" }
+nsh-base = { version = "=0.6.0", features = ["highlight"] }
+nsh-platform-windows = { version = "=0.6.0" }
 nsh-app-discoveryos = { path = ".." }
 serde_json = "1"
 log = "0.4"
 
 [workspace]
+
+# Use the vendored platform crate so the packaged runner carries the
+# multi-monitor DPI fix (nsh PR #2338). See patches/README.md.
+[patch.crates-io]
+nsh-platform-windows = { path = "../patches/nsh-platform-windows" }
